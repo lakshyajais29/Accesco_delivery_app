@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "931848258822",
+    "project_id": "instastyle-be46a",
+    "storage_bucket": "instastyle-be46a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:931848258822:android:38339d8abb92ecb426ca87",
+        "android_client_info": {
+          "package_name": "com.example.instastyle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFQkAIMFo0FEYS3H9j-Gm1mMtHEbx1gL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

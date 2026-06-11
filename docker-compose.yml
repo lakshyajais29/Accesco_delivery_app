@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  # -------------------------------------
+  # INFRASTRUCTURE SERVICES
+  # -------------------------------------
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: instastyle
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # -------------------------------------
+  # BACKEND MICROSERVICES
+  # -------------------------------------
+  instant-outfit-backend:
+    build:
+      context: ./backend/instant_outfit_backend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000" # Mapped to 8001 locally
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/instastyle
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+
+  trial-backend:
+    build:
+      context: ./backend/trial_backend
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000" # Mapped to 8002 locally
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/instastyle
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+
+  vibe-check-backend:
+    build:
+      context: ./backend/vibe_check_backend
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000" # Mapped to 8003 locally
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - SHARE_BASE_URL=https://instastyle.app/vibe
+      - LOW_STOCK_THRESHOLD=2
+    depends_on:
+      - redis
+
+volumes:
+  pgdata:
