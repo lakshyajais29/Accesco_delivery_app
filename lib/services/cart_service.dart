@@ -10,10 +10,12 @@ class CartService {
   final _auth = FirebaseAuth.instance;
 
   Future<String> get _uid async {
-    User? user = _auth.currentUser;
+    final User? user = _auth.currentUser;
     if (user == null) {
-      final cred = await _auth.signInAnonymously();
-      user = cred.user!;
+      throw StateError(
+        'CartService requires an authenticated user. '
+        'Please sign in via Phone Auth before accessing the cart.',
+      );
     }
     return user.uid;
   }

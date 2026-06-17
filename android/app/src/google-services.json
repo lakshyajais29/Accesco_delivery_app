@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "931848258822",
+    "project_id": "instastyle-be46a",
+    "storage_bucket": "instastyle-be46a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:931848258822:android:38339d8abb92ecb426ca87",
+        "android_client_info": {
+          "package_name": "com.example.instastyle"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "931848258822-lbbit136de8vhq3oks149oroc9aerndm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.instastyle",
+            "certificate_hash": "3d01e6855ffbd6480481f26d6d56e73435f4a326"
+          }
+        },
+        {
+          "client_id": "931848258822-qhur1mud499ipq7ku9so8fnnpofgs5b5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFQkAIMFo0FEYS3H9j-Gm1mMtHEbx1gL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "931848258822-qhur1mud499ipq7ku9so8fnnpofgs5b5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

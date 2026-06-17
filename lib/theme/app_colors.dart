@@ -15,6 +15,12 @@ class AppColors {
   /// Modals, bottom sheets, drawers. Slightly lifted from base.
   static const Color surfaceElevated = Color(0xFF1C1916);
 
+  // ── Light Theme Surfaces ───────────────────────────────────────────────
+  static const Color backgroundLight = Color(0xFFFAFAFA);
+  static const Color surfaceCardLight = Color(0xFFFFFFFF);
+  static const Color separatorLight = Color(0xFFEAEAEA);
+
+
   // ── Brand ──────────────────────────────────────────────────
   /// Primary CTAs. Active navigation. Logo. The brand's signature tone.
   static const Color brandWarmBrown = Color(0xFF8B6347);
@@ -31,6 +37,10 @@ class AppColors {
 
   /// Secondary labels. Timestamps. Metadata. Placeholder text.
   static const Color mutedText = Color(0xFF8A8070);
+
+  // ── Light Theme Text ───────────────────────────────────────────────────
+  static const Color textDark = Color(0xFF1A1A1A);
+  static const Color textMutedLight = Color(0xFF666666);
 
   // ── Signals ────────────────────────────────────────────────
   /// Stock counters. Urgency badges. Used sparingly — maximum impact.

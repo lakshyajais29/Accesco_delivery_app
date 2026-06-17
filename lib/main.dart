@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/profile_setup_screen.dart';
 import 'theme/app_colors.dart';
 import 'screens/vibe_check_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -50,8 +52,10 @@ class AccescoApp extends StatelessWidget {
         highlightColor: Colors.transparent,
         splashFactory: NoSplash.splashFactory,
       ),
-      // ── Named routes — onboarding's "START →" navigates to '/home' ────
+      // ── Named routes — onboarding → login → profile setup → home ──────────
       routes: {
+        '/login': (context) => const LoginScreen(),
+        '/profile-setup': (context) => const ProfileSetupScreen(),
         '/home': (context) => const HomeScreen(),
         '/vibe-check': (context) => const VibeCheckScreen(),
       },

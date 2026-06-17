@@ -132,7 +132,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (widget.onComplete != null) {
       widget.onComplete!();
     } else {
-      Navigator.of(context).pushReplacementNamed('/home');
+      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 
@@ -298,10 +298,8 @@ class _OnboardingPage extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(width: 18, height: 1.5, color: brandGold),
-                      const SizedBox(width: 8),
                       Text(
-                        'CHAPTER ${_chapterNum(data.visualMotif)}  \u2014  INSTASTYLE',
+                        'CHAPTER ${_chapterNum(data.visualMotif)}   INSTASTYLE',
                         style: GoogleFonts.montserrat(
                           fontSize:      12,
                           fontWeight:    FontWeight.w600,
@@ -401,51 +399,19 @@ class _EditorialVisual extends StatelessWidget {
           ),
         ),
 
-        // Warm multiply wash
+        // Subtle light vignette
         IgnorePointer(
           child: Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin:  Alignment.topCenter,
-                end:    Alignment.bottomCenter,
-                colors: [
-                  darkBrown.withOpacity(0.28),
-                  brandBrown.withOpacity(0.20),
-                  const Color(0xFF1A0E06).withOpacity(0.52),
-                ],
-                stops: const [0.0, 0.45, 1.0],
-              ),
-              backgroundBlendMode: BlendMode.multiply,
-              color: Colors.transparent,
-            ),
-          ),
-        ),
-
-        // Highlight bloom
-        IgnorePointer(
-          child: CustomPaint(
-            painter: _BloomOverlayPainter(
-              motif:     motif,
-              atmosTime: atmosTime,
-              bgCream:   bgCream,
-              brandGold: brandGold,
-            ),
-          ),
-        ),
-
-        // Vignette
-        IgnorePointer(
-          child: Container(
-            decoration: const BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment.center,
                 radius: 1.1,
                 colors: [
-                  Color(0x000B0B0B),
-                  Color(0x880B0B0B),
-                  Color(0xFF0B0B0B),
+                  bgCream.withOpacity(0.0),
+                  bgCream.withOpacity(0.1),
+                  bgCream.withOpacity(0.4),
                 ],
-                stops: [0.50, 0.82, 1.0],
+                stops: const [0.50, 0.82, 1.0],
               ),
             ),
           ),
@@ -473,7 +439,7 @@ class _MissingImageFallback extends StatelessWidget {
         gradient: LinearGradient(
           begin:  Alignment.topLeft,
           end:    Alignment.bottomRight,
-          colors: [darkBrown, brandBrown.withOpacity(0.6), const Color(0xFF0B0B0B)],
+          colors: [bgCream, bgCream.withOpacity(0.9), bgCream.withOpacity(0.8)],
         ),
       ),
       child: Center(
