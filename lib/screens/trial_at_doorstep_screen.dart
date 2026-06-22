@@ -3,6 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../services/tracking_service.dart';
+import '../theme/map_style.dart';
 import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
 import 'package:instastyle/services/cart_service.dart';
 import 'package:instastyle/services/trial_api_service.dart';
@@ -199,6 +202,12 @@ class _TrialAtDoorstepScreenState extends State<TrialAtDoorstepScreen>
   bool _checklistVisible = false;
   final List<bool> _checkTicked = [false, false, false];
 
+  GoogleMapController? _mapController;
+  final TrackingService _trackingService = TrackingService();
+  StreamSubscription<TrackingData>? _trackingSub;
+  LatLng _riderPosition = const LatLng(0, 0);
+  String _etaText = 'Calculating...';
+
   // ── Trial timer state ──────────────────────────────────────────────────────
   int _trialSecs = 15 * 60;
   Timer? _trialTimer;
@@ -299,6 +308,9 @@ class _TrialAtDoorstepScreenState extends State<TrialAtDoorstepScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);  // ← ADD THIS LINE
 
+    _trackingSub?.cancel();
+    _trackingService.disconnect();
+    _mapController?.dispose();
     _etaTimer?.cancel();
     _trialTimer?.cancel();
     _heroFadeCtrl.dispose();
@@ -342,20 +354,26 @@ Future<void> _syncTimerWithServer() async {
     setState(() => _phase = _Phase.liveTracking);
     await _pageTransCtrl.forward();
 
-    // Start ETA countdown (updates every 30s per spec)
-    _etaTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _trackingSub = _trackingService.connectToTracking(widget.orderId).listen((data) {
       if (!mounted) return;
       setState(() {
-        _etaSecs = max(0, _etaSecs - 30);
-        if (_etaSecs <= 2 * 60 && !_checklistVisible) {
-          _checklistVisible = true;
-          _triggerChecklistStagger();
+        _riderPosition = data.position;
+        _etaText = data.etaText;
+        
+        if (data.etaText.contains('min') && !_checklistVisible) {
+           final minsStr = data.etaText.split(' ').first;
+           final mins = int.tryParse(minsStr);
+           if (mins != null && mins <= 2) {
+             _checklistVisible = true;
+             _triggerChecklistStagger();
+           }
         }
-        if (_etaSecs == 0) {
-          _etaTimer?.cancel();
-          _goToTrialTimer();
+        if (data.etaText == 'Arrived' || data.etaText == '0 min') {
+           _trackingSub?.cancel();
+           _goToTrialTimer();
         }
       });
+      _mapController?.animateCamera(CameraUpdate.newLatLng(_riderPosition));
     });
   }
 
@@ -931,12 +949,6 @@ Future<void> _syncTimerWithServer() async {
   // ETA Pulse: 2s interval, 400ms per pulse, green dot 1→1.4→1, ease-in-out
   // ─────────────────────────────────────────────────────────────────────────
   Widget _buildLiveTracking() {
-    final etaMin   = _etaSecs ~/ 60;
-    final etaSec   = _etaSecs % 60;
-    final etaLabel = etaMin > 0
-        ? '$etaMin min${etaSec > 0 ? ' $etaSec sec' : ''}'
-        : '${_etaSecs}s';
-
     return Column(
       children: [
         Expanded(
@@ -944,14 +956,32 @@ Future<void> _syncTimerWithServer() async {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              AnimatedBuilder(
-                animation: _riderMoveCtrl,
-                builder: (_, __) => CustomPaint(
-                  painter: _DarkMapPainter(
-                    riderProgress: _riderMoveCtrl.value,
-                    dotPulse: _dotPulseCtrl.value,
-                  ),
+              GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: _riderPosition.latitude == 0 && _riderPosition.longitude == 0 
+                      ? const LatLng(12.9352, 77.6245) // Bangalore dummy location
+                      : _riderPosition,
+                  zoom: 16,
                 ),
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                  _mapController?.setMapStyle(MapStyle.premiumSilverCream);
+                  if (_riderPosition.latitude != 0) {
+                    _mapController?.animateCamera(CameraUpdate.newLatLng(_riderPosition));
+                  }
+                },
+                markers: {
+                  if (_riderPosition.latitude != 0 && _riderPosition.longitude != 0)
+                    Marker(
+                      markerId: const MarkerId('rider'),
+                      position: _riderPosition,
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+                    ),
+                },
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: false,
+                compassEnabled: false,
+                mapToolbarEnabled: false,
               ),
 
               // Header overlay
@@ -963,6 +993,7 @@ Future<void> _syncTimerWithServer() async {
                     GestureDetector(
                       onTap: () {
                         _etaTimer?.cancel();
+                        _trackingSub?.cancel();
                         _pageTransCtrl.reset();
                         setState(() {
                           _phase = _Phase.preOrder;
@@ -1012,12 +1043,12 @@ Future<void> _syncTimerWithServer() async {
                               child: child,
                             ),
                           ),
-                          child: Text(etaLabel,
-                              key: ValueKey(etaLabel),
+                          child: Text(_etaText,
+                              key: ValueKey(_etaText),
                               style: _T.mono(32, color: _C.white)),
                         ),
                         const SizedBox(height: 4),
-                        Text('Updates every 30 sec',
+                        Text('Live updates',
                             style: _T.mono(9, color: _C.grey700, fw: FontWeight.w400)),
                       ],
                     ),
@@ -1031,6 +1062,7 @@ Future<void> _syncTimerWithServer() async {
                 child: GestureDetector(
                   onTap: () {
                     _etaTimer?.cancel();
+                    _trackingSub?.cancel();
                     _goToTrialTimer();
                   },
                   child: Container(

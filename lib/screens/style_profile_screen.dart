@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ─── DESIGN TOKENS (from home_screen.dart) ───────────────────────────────────
 class _C {
@@ -185,6 +187,10 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
 
+  bool _isLoading = true;
+  Map<String, dynamic>? _userData;
+  List<_BrandSize> _dynamicBrandSizes = [];
+
   // Style score out of 100
   static const double _styleScore = 78;
   static const double _sizeAccuracy = 0.94;
@@ -210,13 +216,51 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
         vsync: this, duration: const Duration(milliseconds: 1200));
     _scoreAnim = CurvedAnimation(parent: _scoreCtrl, curve: Curves.easeOutCubic);
 
-    _fadeCtrl.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        _ringCtrl.forward();
-        _scoreCtrl.forward();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          setState(() {
+            _userData = doc.data();
+          });
+        }
       }
-    });
+    } catch (e) {
+      debugPrint('Error fetching user data: \$e');
+    } finally {
+      _generateDynamicBrandSizes();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _fadeCtrl.forward();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            _ringCtrl.forward();
+            _scoreCtrl.forward();
+          }
+        });
+      }
+    }
+  }
+
+  void _generateDynamicBrandSizes() {
+    final sizes = (_userData?['preferredSizes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['M'];
+    final defaultSize = sizes.isNotEmpty ? sizes.first : 'M';
+    
+    _dynamicBrandSizes = [
+      _BrandSize(brand: 'ZARA', size: sizes.contains('M') ? 'M' : defaultSize, logoLetter: 'Z', logoColor: const Color(0xFF0D0D0D)),
+      _BrandSize(brand: 'H&M', size: sizes.contains('L') ? 'L' : defaultSize, logoLetter: 'H', logoColor: const Color(0xFFE53935)),
+      _BrandSize(brand: 'MANGO', size: sizes.contains('S') ? 'S/M' : defaultSize, logoLetter: 'M', logoColor: const Color(0xFF7B4A2D)),
+      _BrandSize(brand: 'UNIQLO', size: defaultSize, logoLetter: 'U', logoColor: const Color(0xFFE91E8C)),
+      _BrandSize(brand: 'FABINDIA', size: sizes.contains('L') ? 'L' : defaultSize, logoLetter: 'F', logoColor: const Color(0xFFFF6F00)),
+      _BrandSize(brand: 'WESTSIDE', size: defaultSize, logoLetter: 'W', logoColor: const Color(0xFF7C3AED)),
+    ];
   }
 
   @override
@@ -229,6 +273,12 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: _C.bg,
+        body: const Center(child: CircularProgressIndicator(color: _C.dark)),
+      );
+    }
     return Scaffold(
       backgroundColor: _C.bg,
       body: FadeTransition(
@@ -349,7 +399,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('PRIYA R.', style: _T.display(28, spacing: 1)),
+                Text(_userData?['name']?.toString().toUpperCase() ?? 'STYLE ENTHUSIAST', style: _T.display(28, spacing: 1)),
                 const SizedBox(height: 6),
 
                 // Style DNA tag
@@ -360,7 +410,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
                     color: _C.white,
                   ),
                   child: Text(
-                    'Minimal Contemporary · L in most brands',
+                    "${_userData?['bodyType'] ?? 'Minimal Contemporary'} · ${(_userData?['preferredSizes'] as List?)?.first ?? 'L'} in most brands",
                     style: _T.body(11, color: _C.brown),
                     maxLines: 2,
                   ),
@@ -533,7 +583,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
               spacing: 10,
               runSpacing: 10,
 
-              children: _brandSizes
+              children: _dynamicBrandSizes
                   .map(
                     (b) => _BrandSizeTile(b: b),
                   )
