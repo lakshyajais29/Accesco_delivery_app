@@ -12,6 +12,7 @@ class CatalogService {
       id: 'PBL-AS', name: 'Power Structured Blazer', brand: 'ATELIER SUR',
       category: 'Blazers', gender: ProductGender.women,
       defaultImageUrl: 'https://images.unsplash.com/photo-1551803091-e20673f15770?w=600&q=85',
+      description: 'Cut from a fluid ponte-knit blend with a 4-button double-breasted front, this blazer delivers boardroom authority and gallery-opening allure in equal measure. Notched lapels, a cinched back seam, and a barely-there shoulder pad create an architectural silhouette that photographs beautifully under any light.',
       originalPriceFormatted: '₹12,000',
       sizes: ['S','M','L','XL'], colors: const [
         VariantColor('Black','#1A1A1A'), VariantColor('Ivory','#F5F0E8'), VariantColor('Blush','#E8A0A0'),
@@ -39,6 +40,7 @@ class CatalogService {
       id: 'VKT-IC', name: 'Ethnic Silk Kurta Set', brand: 'INDIRA & CO',
       category: 'Ethnic', gender: ProductGender.women,
       defaultImageUrl: 'https://images.unsplash.com/photo-1566206091558-7f218b696731?w=600&q=85',
+      description: 'Woven on traditional Banarasi handlooms, this dupion silk kurta set features intricate zari brocade at the hem and cuffs, paired with matching straight-cut pants in dupatta-weight georgette. The softly gathered neckline and flared sleeves evoke old-world opulence while remaining effortlessly wearable all day.',
       sizes: ['XS','S','M','L','XL','XXL'], colors: const [
         VariantColor('Saffron','#FF6F00'), VariantColor('Teal','#006064'), VariantColor('Wine','#880E4F'),
       ],
@@ -71,6 +73,7 @@ class CatalogService {
       id: 'COS-CM', name: 'Printed Coord Two-Piece', brand: 'CASA MODAS',
       category: 'Co-ords', gender: ProductGender.women,
       defaultImageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=85',
+      description: 'Designed as a true head-to-toe moment, this co-ord set pairs a cropped flutter-hem top with relaxed wide-leg trousers—both cut from viscose-linen in a bespoke botanical print. Coordinated print alignment at the side seams elevates this from a casual set to a considered fashion statement.',
       sizes: ['XS','S','M','L','XL'], colors: const [
         VariantColor('Beige Print','#C8B89A'), VariantColor('Coral','#E8735A'), VariantColor('Sage','#8FAF88'),
       ],
@@ -100,6 +103,7 @@ class CatalogService {
       id: 'STJ-DN', name: 'Street Oversized Jacket', brand: 'DECO NOIR',
       category: 'Outerwear', gender: ProductGender.women,
       defaultImageUrl: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=85',
+      description: 'Crafted from a boiled wool-blend shell with a satin bomber lining, this oversized jacket straddles the line between streetwear and high fashion. Dropped shoulders, an exaggerated boxy silhouette, and a hidden magnetic closure make it the definitive layer for city dressing.',
       originalPriceFormatted: '₹14,200',
       sizes: ['S','M','L','XL','XXL'], colors: const [
         VariantColor('Onyx','#1A1A1A'), VariantColor('Forest','#2E4A2E'), VariantColor('Stone','#9E9E9E'),
@@ -130,6 +134,7 @@ class CatalogService {
       id: 'DJK-RR', name: 'Distressed Denim Jacket', brand: 'RAW & REFINED',
       category: 'Jackets', gender: ProductGender.women,
       defaultImageUrl: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=600&q=85',
+      description: 'Each jacket passes through a five-stage artisan distress process—enzyme washing, manual abrasion, laser etching, tonal overdyeing, and resin finishing—so no two pieces are identical. The mid-weight 12 oz selvedge denim softens with every wash without losing its structure.',
       sizes: ['XS','S','M','L','XL'], colors: const [
         VariantColor('Blue Wash','#4A90D9'), VariantColor('Black','#1A1A1A'), VariantColor('White','#F5F5F5'),
       ],
@@ -159,6 +164,7 @@ class CatalogService {
       id: 'MDS-MK', name: 'Satin Slip Midi Dress', brand: 'MAISON KAIRA',
       category: 'Dresses', gender: ProductGender.women,
       defaultImageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=85',
+      description: 'Engineered in 22mm sandwashed satin with bias-cut construction, this midi dress drapes the body in a continuous liquid fall of fabric. Adjustable spaghetti straps, a cowl back, and micro-covered side zip ensure a flawless fit that moves with you from cocktail hour to late-night dancing.',
       sizes: ['XS','S','M','L'], colors: const [
         VariantColor('Champagne','#F0DEB4'), VariantColor('Midnight','#1A1A2E'), VariantColor('Rose','#E8A0A0'),
       ],
@@ -180,11 +186,99 @@ class CatalogService {
       },
     ),
 
+    // ── WOMEN ── Velvet Bodycon Dress — MAISON KAIRA ──────────────────────────
+    ParentProduct(
+      id: 'BDY-MK', name: 'Velvet Bodycon Dress', brand: 'MAISON KAIRA',
+      category: 'Dresses', gender: ProductGender.women,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1539008835657-9e8e9680c956?w=600&q=85',
+      description: 'Sculpted from crushed velvet with a compression lining that smooths and defines, this bodycon dress was engineered to hold its shape across an entire evening—no retucks required. A square neckline, invisible centre-back zip, and hem that grazes mid-thigh create a geometry that commands every room it enters.',
+      sizes: ['XS','S','M','L'], colors: const [
+        VariantColor('Onyx','#0D0D0D'), VariantColor('Bordeaux','#6B1225'), VariantColor('Dusty Mauve','#C4A0A0'),
+      ],
+      isNew: true, stock: 5, droppedMinsAgo: 38, viewersNow: 17, orderedToday: 29,
+      cityRank: 2, friendVotes: 21, saleEndsAt: '03:15:00',
+      variantMap: {
+        'XS__#0D0D0D'  : ProductVariant(sku:'BDY-MK-ONX-XS-F01', parentId:'BDY-MK',size:'XS',colorName:'Onyx',       colorHex:'#0D0D0D',stock:3, priceInPaise:2200000),
+        'S__#0D0D0D'   : ProductVariant(sku:'BDY-MK-ONX-S-F02',  parentId:'BDY-MK',size:'S', colorName:'Onyx',       colorHex:'#0D0D0D',stock:5, priceInPaise:2200000),
+        'M__#0D0D0D'   : ProductVariant(sku:'BDY-MK-ONX-M-F03',  parentId:'BDY-MK',size:'M', colorName:'Onyx',       colorHex:'#0D0D0D',stock:2, priceInPaise:2200000),
+        'L__#0D0D0D'   : ProductVariant(sku:'BDY-MK-ONX-L-F04',  parentId:'BDY-MK',size:'L', colorName:'Onyx',       colorHex:'#0D0D0D',stock:0, priceInPaise:2200000),
+        'XS__#6B1225'  : ProductVariant(sku:'BDY-MK-BDX-XS-F11', parentId:'BDY-MK',size:'XS',colorName:'Bordeaux',   colorHex:'#6B1225',stock:2, priceInPaise:2250000),
+        'S__#6B1225'   : ProductVariant(sku:'BDY-MK-BDX-S-F12',  parentId:'BDY-MK',size:'S', colorName:'Bordeaux',   colorHex:'#6B1225',stock:4, priceInPaise:2250000),
+        'M__#6B1225'   : ProductVariant(sku:'BDY-MK-BDX-M-F13',  parentId:'BDY-MK',size:'M', colorName:'Bordeaux',   colorHex:'#6B1225',stock:6, priceInPaise:2250000),
+        'L__#6B1225'   : ProductVariant(sku:'BDY-MK-BDX-L-F14',  parentId:'BDY-MK',size:'L', colorName:'Bordeaux',   colorHex:'#6B1225',stock:1, priceInPaise:2250000),
+        'XS__#C4A0A0'  : ProductVariant(sku:'BDY-MK-MVE-XS-F21', parentId:'BDY-MK',size:'XS',colorName:'Dusty Mauve',colorHex:'#C4A0A0',stock:4, priceInPaise:2200000),
+        'S__#C4A0A0'   : ProductVariant(sku:'BDY-MK-MVE-S-F22',  parentId:'BDY-MK',size:'S', colorName:'Dusty Mauve',colorHex:'#C4A0A0',stock:0, priceInPaise:2200000),
+        'M__#C4A0A0'   : ProductVariant(sku:'BDY-MK-MVE-M-F23',  parentId:'BDY-MK',size:'M', colorName:'Dusty Mauve',colorHex:'#C4A0A0',stock:3, priceInPaise:2200000),
+        'L__#C4A0A0'   : ProductVariant(sku:'BDY-MK-MVE-L-F24',  parentId:'BDY-MK',size:'L', colorName:'Dusty Mauve',colorHex:'#C4A0A0',stock:5, priceInPaise:2200000),
+      },
+    ),
+
+    // ── WOMEN ── Cropped Moto Jacket — ATELIER SUR ───────────────────────────
+    ParentProduct(
+      id: 'CRJ-AS', name: 'Cropped Moto Jacket', brand: 'ATELIER SUR',
+      category: 'Jackets', gender: ProductGender.women,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&q=85',
+      description: 'Cut two sizes short of a full moto jacket, this cropped silhouette hits exactly at the natural waist to elongate the leg. Genuine lamb-nappa leather panelling across the chest and sleeves contrasts with a ponte back yoke for unexpected softness and stretch. Asymmetric zip, notched collar, two welt pockets—no unnecessary embellishments, just pure cut.',
+      originalPriceFormatted: '₹19,500',
+      sizes: ['XS','S','M','L','XL'], colors: const [
+        VariantColor('Jet','#0D0D0D'), VariantColor('Cognac','#A0522D'), VariantColor('Dusty Rose','#C28080'),
+      ],
+      isNew: true, stock: 3, droppedMinsAgo: 60, viewersNow: 11, orderedToday: 17,
+      cityRank: 3, friendVotes: 15,
+      variantMap: {
+        'XS__#0D0D0D': ProductVariant(sku:'CRJ-AS-JET-XS-G01',parentId:'CRJ-AS',size:'XS',colorName:'Jet',       colorHex:'#0D0D0D',stock:2, priceInPaise:1650000),
+        'S__#0D0D0D' : ProductVariant(sku:'CRJ-AS-JET-S-G02', parentId:'CRJ-AS',size:'S', colorName:'Jet',       colorHex:'#0D0D0D',stock:5, priceInPaise:1650000),
+        'M__#0D0D0D' : ProductVariant(sku:'CRJ-AS-JET-M-G03', parentId:'CRJ-AS',size:'M', colorName:'Jet',       colorHex:'#0D0D0D',stock:0, priceInPaise:1650000),
+        'L__#0D0D0D' : ProductVariant(sku:'CRJ-AS-JET-L-G04', parentId:'CRJ-AS',size:'L', colorName:'Jet',       colorHex:'#0D0D0D',stock:3, priceInPaise:1650000),
+        'XL__#0D0D0D': ProductVariant(sku:'CRJ-AS-JET-XL-G05',parentId:'CRJ-AS',size:'XL',colorName:'Jet',       colorHex:'#0D0D0D',stock:1, priceInPaise:1650000),
+        'XS__#A0522D': ProductVariant(sku:'CRJ-AS-CGN-XS-G11',parentId:'CRJ-AS',size:'XS',colorName:'Cognac',    colorHex:'#A0522D',stock:4, priceInPaise:1720000),
+        'S__#A0522D' : ProductVariant(sku:'CRJ-AS-CGN-S-G12', parentId:'CRJ-AS',size:'S', colorName:'Cognac',    colorHex:'#A0522D',stock:1, priceInPaise:1720000),
+        'M__#A0522D' : ProductVariant(sku:'CRJ-AS-CGN-M-G13', parentId:'CRJ-AS',size:'M', colorName:'Cognac',    colorHex:'#A0522D',stock:6, priceInPaise:1720000),
+        'L__#A0522D' : ProductVariant(sku:'CRJ-AS-CGN-L-G14', parentId:'CRJ-AS',size:'L', colorName:'Cognac',    colorHex:'#A0522D',stock:2, priceInPaise:1720000),
+        'XL__#A0522D': ProductVariant(sku:'CRJ-AS-CGN-XL-G15',parentId:'CRJ-AS',size:'XL',colorName:'Cognac',    colorHex:'#A0522D',stock:0, priceInPaise:1720000),
+        'XS__#C28080': ProductVariant(sku:'CRJ-AS-DRS-XS-G21',parentId:'CRJ-AS',size:'XS',colorName:'Dusty Rose',colorHex:'#C28080',stock:3, priceInPaise:1680000),
+        'S__#C28080' : ProductVariant(sku:'CRJ-AS-DRS-S-G22', parentId:'CRJ-AS',size:'S', colorName:'Dusty Rose',colorHex:'#C28080',stock:5, priceInPaise:1680000),
+        'M__#C28080' : ProductVariant(sku:'CRJ-AS-DRS-M-G23', parentId:'CRJ-AS',size:'M', colorName:'Dusty Rose',colorHex:'#C28080',stock:0, priceInPaise:1680000),
+        'L__#C28080' : ProductVariant(sku:'CRJ-AS-DRS-L-G24', parentId:'CRJ-AS',size:'L', colorName:'Dusty Rose',colorHex:'#C28080',stock:4, priceInPaise:1680000),
+        'XL__#C28080': ProductVariant(sku:'CRJ-AS-DRS-XL-G25',parentId:'CRJ-AS',size:'XL',colorName:'Dusty Rose',colorHex:'#C28080',stock:2, priceInPaise:1680000),
+      },
+    ),
+
+    // ── WOMEN ── Pleated Mini Skirt — CASA MODAS ──────────────────────────────
+    ParentProduct(
+      id: 'PLT-CM', name: 'Pleated Mini Skirt', brand: 'CASA MODAS',
+      category: 'Bottoms', gender: ProductGender.women,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=600&q=85',
+      description: 'Precision-cut from crinkled georgette with laser-sharpened knife pleats that fan from a flat-front waistband, this mini skirt moves with a life of its own. A concealed side-zip keeps the lines unbroken; the mid-thigh hemline and half-elastic waistband mean it sizes generously and never gaps at the waist.',
+      sizes: ['XS','S','M','L','XL'], colors: const [
+        VariantColor('Ecru','#EDE0C8'), VariantColor('Storm','#607D8B'), VariantColor('Onyx','#1A1A1A'),
+      ],
+      stock: 8, viewersNow: 10, orderedToday: 35, cityRank: 3, friendVotes: 16,
+      variantMap: {
+        'XS__#EDE0C8': ProductVariant(sku:'PLT-CM-ECR-XS-H01',parentId:'PLT-CM',size:'XS',colorName:'Ecru', colorHex:'#EDE0C8',stock:5, priceInPaise:480000),
+        'S__#EDE0C8' : ProductVariant(sku:'PLT-CM-ECR-S-H02', parentId:'PLT-CM',size:'S', colorName:'Ecru', colorHex:'#EDE0C8',stock:3, priceInPaise:480000),
+        'M__#EDE0C8' : ProductVariant(sku:'PLT-CM-ECR-M-H03', parentId:'PLT-CM',size:'M', colorName:'Ecru', colorHex:'#EDE0C8',stock:6, priceInPaise:480000),
+        'L__#EDE0C8' : ProductVariant(sku:'PLT-CM-ECR-L-H04', parentId:'PLT-CM',size:'L', colorName:'Ecru', colorHex:'#EDE0C8',stock:1, priceInPaise:480000),
+        'XL__#EDE0C8': ProductVariant(sku:'PLT-CM-ECR-XL-H05',parentId:'PLT-CM',size:'XL',colorName:'Ecru', colorHex:'#EDE0C8',stock:4, priceInPaise:480000),
+        'XS__#607D8B': ProductVariant(sku:'PLT-CM-STM-XS-H11',parentId:'PLT-CM',size:'XS',colorName:'Storm',colorHex:'#607D8B',stock:2, priceInPaise:490000),
+        'S__#607D8B' : ProductVariant(sku:'PLT-CM-STM-S-H12', parentId:'PLT-CM',size:'S', colorName:'Storm',colorHex:'#607D8B',stock:7, priceInPaise:490000),
+        'M__#607D8B' : ProductVariant(sku:'PLT-CM-STM-M-H13', parentId:'PLT-CM',size:'M', colorName:'Storm',colorHex:'#607D8B',stock:0, priceInPaise:490000),
+        'L__#607D8B' : ProductVariant(sku:'PLT-CM-STM-L-H14', parentId:'PLT-CM',size:'L', colorName:'Storm',colorHex:'#607D8B',stock:4, priceInPaise:490000),
+        'XL__#607D8B': ProductVariant(sku:'PLT-CM-STM-XL-H15',parentId:'PLT-CM',size:'XL',colorName:'Storm',colorHex:'#607D8B',stock:2, priceInPaise:490000),
+        'XS__#1A1A1A': ProductVariant(sku:'PLT-CM-ONX-XS-H21',parentId:'PLT-CM',size:'XS',colorName:'Onyx', colorHex:'#1A1A1A',stock:6, priceInPaise:470000),
+        'S__#1A1A1A' : ProductVariant(sku:'PLT-CM-ONX-S-H22', parentId:'PLT-CM',size:'S', colorName:'Onyx', colorHex:'#1A1A1A',stock:0, priceInPaise:470000),
+        'M__#1A1A1A' : ProductVariant(sku:'PLT-CM-ONX-M-H23', parentId:'PLT-CM',size:'M', colorName:'Onyx', colorHex:'#1A1A1A',stock:5, priceInPaise:470000),
+        'L__#1A1A1A' : ProductVariant(sku:'PLT-CM-ONX-L-H24', parentId:'PLT-CM',size:'L', colorName:'Onyx', colorHex:'#1A1A1A',stock:3, priceInPaise:470000),
+        'XL__#1A1A1A': ProductVariant(sku:'PLT-CM-ONX-XL-H25',parentId:'PLT-CM',size:'XL',colorName:'Onyx', colorHex:'#1A1A1A',stock:1, priceInPaise:470000),
+      },
+    ),
+
     // ── MEN ── Oversized Premium Hoodie — NORDVIK CO ──────────────────────────
     ParentProduct(
       id: 'OHD-NK', name: 'Oversized Premium Hoodie', brand: 'NORDVIK CO',
       category: 'Hoodies', gender: ProductGender.men,
       defaultImageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=600&q=85',
+      description: 'Crafted from 400 GSM French terry cotton with a relaxed drop-shoulder silhouette, this hoodie defines the new standard for luxury basics. Double-lined hood, ribbed cuffs and hem, and a kangaroo pocket with concealed zip compartment. Garment-dyed after construction for a richer, more uniform finish.',
       sizes: ['S','M','L','XL','XXL'], colors: const [
         VariantColor('Carbon','#2D2D2D'), VariantColor('Ecru','#EDE0C8'), VariantColor('Slate Blue','#5C7A9A'),
       ],
@@ -214,6 +308,7 @@ class CatalogService {
       id: 'BMB-DN', name: 'Satin Bomber Jacket', brand: 'DECO NOIR',
       category: 'Jackets', gender: ProductGender.men,
       defaultImageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&q=85',
+      description: 'Constructed from premium 8mm satin with a reversible quilted lining and YKK brass zippers, this bomber is built to outlast trends. The subtle sheen catches light differently from every angle, making it equally at home under concert-venue neons or rooftop-bar chandeliers.',
       originalPriceFormatted: '₹16,500',
       sizes: ['S','M','L','XL'], colors: const [
         VariantColor('Jet Black','#0D0D0D'), VariantColor('Olive','#5A6B2E'), VariantColor('Rust','#B5451B'),
@@ -241,6 +336,7 @@ class CatalogService {
       id: 'CGJ-NK', name: 'Tapered Cargo Jogger', brand: 'NORDVIK CO',
       category: 'Bottoms', gender: ProductGender.men,
       defaultImageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=600&q=85',
+      description: 'Cut from a 4-way stretch ripstop nylon with a DWR coating, these cargo joggers move like trackpants but carry like workwear. Six utility pockets—including two zip cargo panels and a hidden media slot—are finished with matte hardware to keep the aesthetic clean and purposeful.',
       sizes: ['S','M','L','XL','XXL'], colors: const [
         VariantColor('Khaki','#B5A07A'), VariantColor('Charcoal','#3D3D3D'), VariantColor('Olive Drab','#6B6B2E'),
       ],
@@ -270,6 +366,7 @@ class CatalogService {
       id: 'SLJ-RR', name: 'Slim Stretch Denim', brand: 'RAW & REFINED',
       category: 'Denim', gender: ProductGender.men,
       defaultImageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=600&q=85',
+      description: 'Woven from Japanese selvedge denim with 3% elastane for precision stretch recovery, these jeans sit at the natural waist with a tapered leg that hits cleanly at the ankle. Single-stitch seams, a red selvage ID, and custom riveted waistband deliver the heritage details that purists obsess over.',
       sizes: ['28','30','32','34','36'], colors: const [
         VariantColor('Raw Indigo','#2B4F8A'), VariantColor('Black','#1A1A1A'), VariantColor('Grey Wash','#888888'),
       ],
@@ -293,11 +390,12 @@ class CatalogService {
       },
     ),
 
-    // ── MEN ── Men's Cotton Kurta — INDIRA & CO ───────────────────────────────
+    // ── MEN ── Premium Cotton Kurta — INDIRA & CO ─────────────────────────────
     ParentProduct(
       id: 'KRT-IC', name: 'Premium Cotton Kurta', brand: 'INDIRA & CO',
       category: 'Ethnic', gender: ProductGender.men,
       defaultImageUrl: 'https://images.unsplash.com/photo-1603252109303-2751441dd157?w=600&q=85',
+      description: 'Crafted from handspun Khadi cotton at 200-thread count for breathability in Indian summers, this kurta features hand-embroidered chikankari at the collar and placket. The A-line silhouette and mandarin collar make it an effortless choice for both festive occasions and elevated everyday dressing.',
       sizes: ['S','M','L','XL','XXL'], colors: const [
         VariantColor('Ivory','#EDE8DC'), VariantColor('Slate','#4A5568'), VariantColor('Crimson','#9B1C1C'),
       ],
@@ -321,11 +419,101 @@ class CatalogService {
       },
     ),
 
+    // ── MEN ── Acid Washed Graphic Tee — NORDVIK CO ───────────────────────────
+    ParentProduct(
+      id: 'GFT-NK', name: 'Acid Washed Graphic Tee', brand: 'NORDVIK CO',
+      category: 'Tops', gender: ProductGender.men,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&q=85',
+      description: 'Starting with a premium 220 GSM jersey blank, each tee goes through a cold-water enzyme wash that fades the ground colour selectively—concentrating around seams and edges to create a lived-in depth impossible to replicate digitally. The oversized screen-printed graphic uses discharge ink that bonds with the fibre rather than sitting on top.',
+      sizes: ['S','M','L','XL','XXL'], colors: const [
+        VariantColor('Washed Black','#2A2A2A'), VariantColor('Stone Wash','#A89880'), VariantColor('Indigo Fade','#4A6080'),
+      ],
+      isNew: true, stock: 10, droppedMinsAgo: 42, viewersNow: 28, orderedToday: 66,
+      cityRank: 1, friendVotes: 35,
+      variantMap: {
+        'S__#2A2A2A'  : ProductVariant(sku:'GFT-NK-WBK-S-I01',  parentId:'GFT-NK',size:'S',  colorName:'Washed Black',colorHex:'#2A2A2A',stock:6, priceInPaise:299000),
+        'M__#2A2A2A'  : ProductVariant(sku:'GFT-NK-WBK-M-I02',  parentId:'GFT-NK',size:'M',  colorName:'Washed Black',colorHex:'#2A2A2A',stock:4, priceInPaise:299000),
+        'L__#2A2A2A'  : ProductVariant(sku:'GFT-NK-WBK-L-I03',  parentId:'GFT-NK',size:'L',  colorName:'Washed Black',colorHex:'#2A2A2A',stock:7, priceInPaise:299000),
+        'XL__#2A2A2A' : ProductVariant(sku:'GFT-NK-WBK-XL-I04', parentId:'GFT-NK',size:'XL', colorName:'Washed Black',colorHex:'#2A2A2A',stock:2, priceInPaise:299000),
+        'XXL__#2A2A2A': ProductVariant(sku:'GFT-NK-WBK-XXL-I05',parentId:'GFT-NK',size:'XXL',colorName:'Washed Black',colorHex:'#2A2A2A',stock:5, priceInPaise:299000),
+        'S__#A89880'  : ProductVariant(sku:'GFT-NK-STW-S-I11',  parentId:'GFT-NK',size:'S',  colorName:'Stone Wash',  colorHex:'#A89880',stock:3, priceInPaise:279000),
+        'M__#A89880'  : ProductVariant(sku:'GFT-NK-STW-M-I12',  parentId:'GFT-NK',size:'M',  colorName:'Stone Wash',  colorHex:'#A89880',stock:8, priceInPaise:279000),
+        'L__#A89880'  : ProductVariant(sku:'GFT-NK-STW-L-I13',  parentId:'GFT-NK',size:'L',  colorName:'Stone Wash',  colorHex:'#A89880',stock:0, priceInPaise:279000),
+        'XL__#A89880' : ProductVariant(sku:'GFT-NK-STW-XL-I14', parentId:'GFT-NK',size:'XL', colorName:'Stone Wash',  colorHex:'#A89880',stock:4, priceInPaise:279000),
+        'XXL__#A89880': ProductVariant(sku:'GFT-NK-STW-XXL-I15',parentId:'GFT-NK',size:'XXL',colorName:'Stone Wash',  colorHex:'#A89880',stock:1, priceInPaise:279000),
+        'S__#4A6080'  : ProductVariant(sku:'GFT-NK-IDF-S-I21',  parentId:'GFT-NK',size:'S',  colorName:'Indigo Fade', colorHex:'#4A6080',stock:5, priceInPaise:319000),
+        'M__#4A6080'  : ProductVariant(sku:'GFT-NK-IDF-M-I22',  parentId:'GFT-NK',size:'M',  colorName:'Indigo Fade', colorHex:'#4A6080',stock:2, priceInPaise:319000),
+        'L__#4A6080'  : ProductVariant(sku:'GFT-NK-IDF-L-I23',  parentId:'GFT-NK',size:'L',  colorName:'Indigo Fade', colorHex:'#4A6080',stock:6, priceInPaise:319000),
+        'XL__#4A6080' : ProductVariant(sku:'GFT-NK-IDF-XL-I24', parentId:'GFT-NK',size:'XL', colorName:'Indigo Fade', colorHex:'#4A6080',stock:0, priceInPaise:319000),
+        'XXL__#4A6080': ProductVariant(sku:'GFT-NK-IDF-XXL-I25',parentId:'GFT-NK',size:'XXL',colorName:'Indigo Fade', colorHex:'#4A6080',stock:3, priceInPaise:319000),
+      },
+    ),
+
+    // ── MEN ── Tapered Tech Trackpant — RAW & REFINED ─────────────────────────
+    ParentProduct(
+      id: 'TFP-RR', name: 'Tapered Tech Trackpant', brand: 'RAW & REFINED',
+      category: 'Bottoms', gender: ProductGender.men,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1562183241-840b8af0721e?w=600&q=85',
+      description: 'Cut from a dual-weave techfabric—polyester face with a brushed fleece back—these track pants combine athletic performance with fashion-forward proportion. A tapered leg, wide elasticated waistband with internal drawstring, deep zip pockets at both sides, and tonal taping down the outer seam. Moisture-managed; dry within 20 minutes.',
+      sizes: ['S','M','L','XL','XXL'], colors: const [
+        VariantColor('Jet Black','#0D0D0D'), VariantColor('Slate','#5A6472'), VariantColor('Army Green','#4A5E3A'),
+      ],
+      stock: 6, viewersNow: 13, orderedToday: 40, cityRank: 3, friendVotes: 22,
+      variantMap: {
+        'S__#0D0D0D'  : ProductVariant(sku:'TFP-RR-JBK-S-J01',  parentId:'TFP-RR',size:'S',  colorName:'Jet Black', colorHex:'#0D0D0D',stock:5, priceInPaise:580000),
+        'M__#0D0D0D'  : ProductVariant(sku:'TFP-RR-JBK-M-J02',  parentId:'TFP-RR',size:'M',  colorName:'Jet Black', colorHex:'#0D0D0D',stock:3, priceInPaise:580000),
+        'L__#0D0D0D'  : ProductVariant(sku:'TFP-RR-JBK-L-J03',  parentId:'TFP-RR',size:'L',  colorName:'Jet Black', colorHex:'#0D0D0D',stock:7, priceInPaise:580000),
+        'XL__#0D0D0D' : ProductVariant(sku:'TFP-RR-JBK-XL-J04', parentId:'TFP-RR',size:'XL', colorName:'Jet Black', colorHex:'#0D0D0D',stock:1, priceInPaise:580000),
+        'XXL__#0D0D0D': ProductVariant(sku:'TFP-RR-JBK-XXL-J05',parentId:'TFP-RR',size:'XXL',colorName:'Jet Black', colorHex:'#0D0D0D',stock:4, priceInPaise:580000),
+        'S__#5A6472'  : ProductVariant(sku:'TFP-RR-SLT-S-J11',  parentId:'TFP-RR',size:'S',  colorName:'Slate',     colorHex:'#5A6472',stock:2, priceInPaise:560000),
+        'M__#5A6472'  : ProductVariant(sku:'TFP-RR-SLT-M-J12',  parentId:'TFP-RR',size:'M',  colorName:'Slate',     colorHex:'#5A6472',stock:6, priceInPaise:560000),
+        'L__#5A6472'  : ProductVariant(sku:'TFP-RR-SLT-L-J13',  parentId:'TFP-RR',size:'L',  colorName:'Slate',     colorHex:'#5A6472',stock:0, priceInPaise:560000),
+        'XL__#5A6472' : ProductVariant(sku:'TFP-RR-SLT-XL-J14', parentId:'TFP-RR',size:'XL', colorName:'Slate',     colorHex:'#5A6472',stock:4, priceInPaise:560000),
+        'XXL__#5A6472': ProductVariant(sku:'TFP-RR-SLT-XXL-J15',parentId:'TFP-RR',size:'XXL',colorName:'Slate',     colorHex:'#5A6472',stock:2, priceInPaise:560000),
+        'S__#4A5E3A'  : ProductVariant(sku:'TFP-RR-AGR-S-J21',  parentId:'TFP-RR',size:'S',  colorName:'Army Green',colorHex:'#4A5E3A',stock:3, priceInPaise:599000),
+        'M__#4A5E3A'  : ProductVariant(sku:'TFP-RR-AGR-M-J22',  parentId:'TFP-RR',size:'M',  colorName:'Army Green',colorHex:'#4A5E3A',stock:5, priceInPaise:599000),
+        'L__#4A5E3A'  : ProductVariant(sku:'TFP-RR-AGR-L-J23',  parentId:'TFP-RR',size:'L',  colorName:'Army Green',colorHex:'#4A5E3A',stock:1, priceInPaise:599000),
+        'XL__#4A5E3A' : ProductVariant(sku:'TFP-RR-AGR-XL-J24', parentId:'TFP-RR',size:'XL', colorName:'Army Green',colorHex:'#4A5E3A',stock:0, priceInPaise:599000),
+        'XXL__#4A5E3A': ProductVariant(sku:'TFP-RR-AGR-XXL-J25',parentId:'TFP-RR',size:'XXL',colorName:'Army Green',colorHex:'#4A5E3A',stock:6, priceInPaise:599000),
+      },
+    ),
+
+    // ── MEN ── Wide-Leg Cargo Pant — DECO NOIR ────────────────────────────────
+    ParentProduct(
+      id: 'CGO-DN', name: 'Wide-Leg Cargo Pant', brand: 'DECO NOIR',
+      category: 'Streetwear', gender: ProductGender.men,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&q=85',
+      description: 'Constructed from a 10 oz cotton-nylon twill that sits heavy enough to hold structure but soft enough to move freely, these wide-leg cargos are the statement bottom for the season. Eight pockets total—including two deep side cargos with press-stud flaps—plus a relaxed rise and cropped hem that sits cleanly over chunky footwear.',
+      sizes: ['S','M','L','XL','XXL'], colors: const [
+        VariantColor('Hazel','#8B7355'), VariantColor('Onyx','#1A1A1A'), VariantColor('Military','#3A5028'),
+      ],
+      isNew: true, stock: 4, droppedMinsAgo: 90, viewersNow: 16, orderedToday: 27,
+      cityRank: 2, friendVotes: 20, saleEndsAt: '01:55:00',
+      variantMap: {
+        'S__#8B7355'  : ProductVariant(sku:'CGO-DN-HZL-S-K01',  parentId:'CGO-DN',size:'S',  colorName:'Hazel',   colorHex:'#8B7355',stock:4, priceInPaise:740000),
+        'M__#8B7355'  : ProductVariant(sku:'CGO-DN-HZL-M-K02',  parentId:'CGO-DN',size:'M',  colorName:'Hazel',   colorHex:'#8B7355',stock:2, priceInPaise:740000),
+        'L__#8B7355'  : ProductVariant(sku:'CGO-DN-HZL-L-K03',  parentId:'CGO-DN',size:'L',  colorName:'Hazel',   colorHex:'#8B7355',stock:6, priceInPaise:740000),
+        'XL__#8B7355' : ProductVariant(sku:'CGO-DN-HZL-XL-K04', parentId:'CGO-DN',size:'XL', colorName:'Hazel',   colorHex:'#8B7355',stock:0, priceInPaise:740000),
+        'XXL__#8B7355': ProductVariant(sku:'CGO-DN-HZL-XXL-K05',parentId:'CGO-DN',size:'XXL',colorName:'Hazel',   colorHex:'#8B7355',stock:3, priceInPaise:740000),
+        'S__#1A1A1A'  : ProductVariant(sku:'CGO-DN-ONX-S-K11',  parentId:'CGO-DN',size:'S',  colorName:'Onyx',    colorHex:'#1A1A1A',stock:5, priceInPaise:760000),
+        'M__#1A1A1A'  : ProductVariant(sku:'CGO-DN-ONX-M-K12',  parentId:'CGO-DN',size:'M',  colorName:'Onyx',    colorHex:'#1A1A1A',stock:0, priceInPaise:760000),
+        'L__#1A1A1A'  : ProductVariant(sku:'CGO-DN-ONX-L-K13',  parentId:'CGO-DN',size:'L',  colorName:'Onyx',    colorHex:'#1A1A1A',stock:7, priceInPaise:760000),
+        'XL__#1A1A1A' : ProductVariant(sku:'CGO-DN-ONX-XL-K14', parentId:'CGO-DN',size:'XL', colorName:'Onyx',    colorHex:'#1A1A1A',stock:3, priceInPaise:760000),
+        'XXL__#1A1A1A': ProductVariant(sku:'CGO-DN-ONX-XXL-K15',parentId:'CGO-DN',size:'XXL',colorName:'Onyx',    colorHex:'#1A1A1A',stock:1, priceInPaise:760000),
+        'S__#3A5028'  : ProductVariant(sku:'CGO-DN-MIL-S-K21',  parentId:'CGO-DN',size:'S',  colorName:'Military',colorHex:'#3A5028',stock:3, priceInPaise:720000),
+        'M__#3A5028'  : ProductVariant(sku:'CGO-DN-MIL-M-K22',  parentId:'CGO-DN',size:'M',  colorName:'Military',colorHex:'#3A5028',stock:6, priceInPaise:720000),
+        'L__#3A5028'  : ProductVariant(sku:'CGO-DN-MIL-L-K23',  parentId:'CGO-DN',size:'L',  colorName:'Military',colorHex:'#3A5028',stock:2, priceInPaise:720000),
+        'XL__#3A5028' : ProductVariant(sku:'CGO-DN-MIL-XL-K24', parentId:'CGO-DN',size:'XL', colorName:'Military',colorHex:'#3A5028',stock:0, priceInPaise:720000),
+        'XXL__#3A5028': ProductVariant(sku:'CGO-DN-MIL-XXL-K25',parentId:'CGO-DN',size:'XXL',colorName:'Military',colorHex:'#3A5028',stock:4, priceInPaise:720000),
+      },
+    ),
+
     // ── UNISEX ── Logo Snapback Cap — NORDVIK CO ──────────────────────────────
     ParentProduct(
       id: 'CAP-NK', name: 'Logo Snapback Cap', brand: 'NORDVIK CO',
       category: 'Accessories', gender: ProductGender.unisex,
       defaultImageUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=600&q=85',
+      description: 'Constructed from a 6-panel unstructured twill shell with a reinforced front panel, this snapback features an embossed rubber logo badge and a retro-inspired plastic snap closure. Moisture-wicking sweatband inside; raw-edge brim for that perfectly undone finish.',
       sizes: ['Free Size'], colors: const [
         VariantColor('Black','#1A1A1A'), VariantColor('Beige','#D4C5A9'), VariantColor('Navy','#1A2E4A'),
       ],
@@ -343,6 +531,7 @@ class CatalogService {
       id: 'SNK-SE', name: 'Chunky Trainer Sneaker', brand: 'STRIDE ELITE',
       category: 'Footwear', gender: ProductGender.unisex,
       defaultImageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=85',
+      description: 'Built on a 40mm EVA platform sole with a two-tone rubber outsole, these chunky trainers have a leather and ballistic mesh upper that moulds to the foot after 3-4 wears. Memory foam insole, double-layered cushioning chambers in the heel, and heat-stamped branding on the pull tab.',
       originalPriceFormatted: '₹11,999',
       sizes: ['UK6','UK7','UK8','UK9','UK10','UK11'], colors: const [
         VariantColor('Triple White','#F5F5F5'), VariantColor('Black Gum','#1A1A1A'), VariantColor('Clay','#B5956E'),
@@ -370,6 +559,59 @@ class CatalogService {
         'UK11__#B5956E': ProductVariant(sku:'SNK-SE-CLY-UK11-E26',parentId:'SNK-SE',size:'UK11',colorName:'Clay',       colorHex:'#B5956E',stock:4, priceInPaise:879900),
       },
     ),
+
+    // ── UNISEX ── High-Top Platform Sneaker — STRIDE ELITE ────────────────────
+    ParentProduct(
+      id: 'HTP-SE', name: 'High-Top Platform Sneaker', brand: 'STRIDE ELITE',
+      category: 'Footwear', gender: ProductGender.unisex,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1600269452121-4f2416e55c28?w=600&q=85',
+      description: 'Built on a 45mm stacked EVA platform with a vulcanised rubber wall and a canvas-and-suede upper, these high-tops blur the line between skate archive and luxury sport. Reinforced ankle collar with Lycra lining, double-waxed flat laces, and a debossed outsole logo complete the build—substantial but never heavy.',
+      originalPriceFormatted: '₹13,500',
+      sizes: ['UK6','UK7','UK8','UK9','UK10','UK11'], colors: const [
+        VariantColor('Vintage White','#F0EDE4'), VariantColor('Shadow','#2D2D2D'), VariantColor('Terracotta','#C25A3A'),
+      ],
+      isNew: true, stock: 3, droppedMinsAgo: 55, viewersNow: 27, orderedToday: 48, saleEndsAt: '02:45:00',
+      cityRank: 2, friendVotes: 30,
+      variantMap: {
+        'UK6__#F0EDE4' : ProductVariant(sku:'HTP-SE-VWH-UK6-L01', parentId:'HTP-SE',size:'UK6', colorName:'Vintage White',colorHex:'#F0EDE4',stock:3, priceInPaise:1100000),
+        'UK7__#F0EDE4' : ProductVariant(sku:'HTP-SE-VWH-UK7-L02', parentId:'HTP-SE',size:'UK7', colorName:'Vintage White',colorHex:'#F0EDE4',stock:5, priceInPaise:1100000),
+        'UK8__#F0EDE4' : ProductVariant(sku:'HTP-SE-VWH-UK8-L03', parentId:'HTP-SE',size:'UK8', colorName:'Vintage White',colorHex:'#F0EDE4',stock:1, priceInPaise:1100000),
+        'UK9__#F0EDE4' : ProductVariant(sku:'HTP-SE-VWH-UK9-L04', parentId:'HTP-SE',size:'UK9', colorName:'Vintage White',colorHex:'#F0EDE4',stock:0, priceInPaise:1100000),
+        'UK10__#F0EDE4': ProductVariant(sku:'HTP-SE-VWH-UK10-L05',parentId:'HTP-SE',size:'UK10',colorName:'Vintage White',colorHex:'#F0EDE4',stock:4, priceInPaise:1100000),
+        'UK11__#F0EDE4': ProductVariant(sku:'HTP-SE-VWH-UK11-L06',parentId:'HTP-SE',size:'UK11',colorName:'Vintage White',colorHex:'#F0EDE4',stock:2, priceInPaise:1100000),
+        'UK6__#2D2D2D' : ProductVariant(sku:'HTP-SE-SHD-UK6-L11', parentId:'HTP-SE',size:'UK6', colorName:'Shadow',       colorHex:'#2D2D2D',stock:6, priceInPaise:1150000),
+        'UK7__#2D2D2D' : ProductVariant(sku:'HTP-SE-SHD-UK7-L12', parentId:'HTP-SE',size:'UK7', colorName:'Shadow',       colorHex:'#2D2D2D',stock:2, priceInPaise:1150000),
+        'UK8__#2D2D2D' : ProductVariant(sku:'HTP-SE-SHD-UK8-L13', parentId:'HTP-SE',size:'UK8', colorName:'Shadow',       colorHex:'#2D2D2D',stock:4, priceInPaise:1150000),
+        'UK9__#2D2D2D' : ProductVariant(sku:'HTP-SE-SHD-UK9-L14', parentId:'HTP-SE',size:'UK9', colorName:'Shadow',       colorHex:'#2D2D2D',stock:0, priceInPaise:1150000),
+        'UK10__#2D2D2D': ProductVariant(sku:'HTP-SE-SHD-UK10-L15',parentId:'HTP-SE',size:'UK10',colorName:'Shadow',       colorHex:'#2D2D2D',stock:3, priceInPaise:1150000),
+        'UK11__#2D2D2D': ProductVariant(sku:'HTP-SE-SHD-UK11-L16',parentId:'HTP-SE',size:'UK11',colorName:'Shadow',       colorHex:'#2D2D2D',stock:5, priceInPaise:1150000),
+        'UK6__#C25A3A' : ProductVariant(sku:'HTP-SE-TRC-UK6-L21', parentId:'HTP-SE',size:'UK6', colorName:'Terracotta',   colorHex:'#C25A3A',stock:2, priceInPaise:1080000),
+        'UK7__#C25A3A' : ProductVariant(sku:'HTP-SE-TRC-UK7-L22', parentId:'HTP-SE',size:'UK7', colorName:'Terracotta',   colorHex:'#C25A3A',stock:7, priceInPaise:1080000),
+        'UK8__#C25A3A' : ProductVariant(sku:'HTP-SE-TRC-UK8-L23', parentId:'HTP-SE',size:'UK8', colorName:'Terracotta',   colorHex:'#C25A3A',stock:0, priceInPaise:1080000),
+        'UK9__#C25A3A' : ProductVariant(sku:'HTP-SE-TRC-UK9-L24', parentId:'HTP-SE',size:'UK9', colorName:'Terracotta',   colorHex:'#C25A3A',stock:4, priceInPaise:1080000),
+        'UK10__#C25A3A': ProductVariant(sku:'HTP-SE-TRC-UK10-L25',parentId:'HTP-SE',size:'UK10',colorName:'Terracotta',   colorHex:'#C25A3A',stock:1, priceInPaise:1080000),
+        'UK11__#C25A3A': ProductVariant(sku:'HTP-SE-TRC-UK11-L26',parentId:'HTP-SE',size:'UK11',colorName:'Terracotta',   colorHex:'#C25A3A',stock:3, priceInPaise:1080000),
+      },
+    ),
+
+    // ── UNISEX ── Structured Leather Tote — CASA MODAS ────────────────────────
+    ParentProduct(
+      id: 'LTT-CM', name: 'Structured Leather Tote', brand: 'CASA MODAS',
+      category: 'Accessories', gender: ProductGender.unisex,
+      defaultImageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=85',
+      description: 'Constructed from full-grain pebbled leather with a canvas-lined interior, this tote features a central zip compartment flanked by two open pockets and a zip slip pocket. Flat base rivets protect the bottom; chunky polished hardware at the top handles adds weight and permanence to a bag built to improve with age.',
+      sizes: ['One Size'], colors: const [
+        VariantColor('Tan','#B5956E'), VariantColor('Onyx','#1A1A1A'), VariantColor('Burgundy','#6B1030'),
+      ],
+      isNew: true, stock: 8, droppedMinsAgo: 25, viewersNow: 20, orderedToday: 52,
+      cityRank: 2, friendVotes: 29,
+      variantMap: {
+        'One Size__#B5956E': ProductVariant(sku:'LTT-CM-TAN-OS-M01',parentId:'LTT-CM',size:'One Size',colorName:'Tan',     colorHex:'#B5956E',stock:6, priceInPaise:900000),
+        'One Size__#1A1A1A': ProductVariant(sku:'LTT-CM-ONX-OS-M02',parentId:'LTT-CM',size:'One Size',colorName:'Onyx',    colorHex:'#1A1A1A',stock:4, priceInPaise:950000),
+        'One Size__#6B1030': ProductVariant(sku:'LTT-CM-BRG-OS-M03',parentId:'LTT-CM',size:'One Size',colorName:'Burgundy',colorHex:'#6B1030',stock:8, priceInPaise:920000),
+      },
+    ),
+
   ];
 
   // ── Query API (mock FastAPI endpoints) ───────────────────────────────────────
@@ -411,6 +653,41 @@ class CatalogService {
 
   static ParentProduct? getById(String id) =>
       _catalog.cast<ParentProduct?>().firstWhere((p) => p?.id == id, orElse: () => null);
+
+  /// Returns up to [limit] products from the same or complementary category,
+  /// excluding [current] itself. Results are shuffled for variety.
+  static List<ProductModel> getSimilarProducts(
+    ProductModel current, {
+    int limit = 5,
+  }) {
+    const complementary = <String, List<String>>{
+      'Blazers'    : ['Jackets', 'Outerwear', 'Co-ords'],
+      'Co-ords'    : ['Dresses', 'Ethnic', 'Blazers'],
+      'Dresses'    : ['Co-ords', 'Ethnic'],
+      'Ethnic'     : ['Dresses', 'Co-ords'],
+      'Hoodies'    : ['Jackets', 'Tops', 'Streetwear'],
+      'Jackets'    : ['Outerwear', 'Blazers', 'Hoodies'],
+      'Outerwear'  : ['Jackets', 'Blazers'],
+      'Tops'       : ['Hoodies', 'Denim', 'Bottoms'],
+      'Denim'      : ['Bottoms', 'Jackets', 'Tops'],
+      'Bottoms'    : ['Denim', 'Tops', 'Streetwear'],
+      'Streetwear' : ['Bottoms', 'Hoodies', 'Jackets'],
+      'Footwear'   : ['Accessories'],
+      'Accessories': ['Footwear'],
+    };
+
+    final allowed = <String>{
+      current.category,
+      ...complementary[current.category] ?? [],
+    };
+
+    final candidates = _catalog
+        .where((p) => p.id != current.id && allowed.contains(p.category))
+        .toList()
+      ..shuffle();
+
+    return candidates.take(limit).toList();
+  }
 
   static CartPayload buildCartPayload({
     required ParentProduct parent,

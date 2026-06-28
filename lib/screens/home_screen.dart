@@ -8,9 +8,9 @@ import '../services/catalog_service.dart';
 import 'swipe_style_screen.dart';
 import 'instant_outfit_builder_screen.dart';
 import 'trial_at_doorstep_screen.dart';
-import 'vibe_check_screen.dart';
 import 'thrift_marketplace_screen.dart';
 import 'style_profile_screen.dart';
+import 'product_detail_screen.dart';
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 class _C {
@@ -752,11 +752,14 @@ class _ProductCard extends StatelessWidget {
             SizedBox(
               height: _kImgH,
               child: Stack(fit: StackFit.expand, children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
-                  child: Image.network(p.defaultImageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(color: _C.cardBg)),
+                Hero(
+                  tag: p.id,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+                    child: Image.network(p.defaultImageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: _C.cardBg)),
+                  ),
                 ),
                 if (badge != null) Positioned(top: 8, left: 8, child: badge!),
                 // Gender badge
@@ -942,7 +945,8 @@ class _JustDroppedRailState extends State<_JustDroppedRail> with SingleTickerPro
           return Stack(children: [
             _ProductCard(
               product: p, wished: wished,
-              onWish: () => widget.onWish(p.id), onTap: () {},
+              onWish: () => widget.onWish(p.id),
+              onTap: () => Navigator.push(context, ProductDetailScreen.route(p)),
               badge: badge, fomoSignal: fomoSignal,
             ),
             Positioned(
@@ -1000,7 +1004,8 @@ class _AlmostGoneRail extends StatelessWidget {
 
           return _ProductCard(
             product: p, wished: wished,
-            onWish: () => onWish(p.id), onTap: () {},
+            onWish: () => onWish(p.id),
+            onTap: () => Navigator.push(context, ProductDetailScreen.route(p)),
             badge: badge, fomoSignal: fomoSignal,
           );
         },
@@ -1045,7 +1050,8 @@ class _TrendingRail extends StatelessWidget {
 
           return _ProductCard(
             product: p, wished: wished,
-            onWish: () => onWish(p.id), onTap: () {},
+            onWish: () => onWish(p.id),
+            onTap: () => Navigator.push(context, ProductDetailScreen.route(p)),
             badge: badge, fomoSignal: fomoSignal,
           );
         },
@@ -1122,8 +1128,7 @@ class _VibeCheckRail extends StatelessWidget {
               _ProductCard(
                 product: p, wished: wished,
                 onWish: () => onWish(p.id),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const VibeCheckScreen())),
+                onTap: () => Navigator.push(context, ProductDetailScreen.route(p)),
                 badge: badge, fomoSignal: fomoSignal,
               ),
               if (isUrgent) _UrgentStripWidget(votes: p.friendVotes),

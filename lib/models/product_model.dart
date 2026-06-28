@@ -47,6 +47,7 @@ class ParentProduct {
   final String category;
   final ProductGender gender;
   final String defaultImageUrl;
+  final String description;
   final String? originalPriceFormatted;
   final List<String> sizes;
   final List<VariantColor> colors;
@@ -71,6 +72,7 @@ class ParentProduct {
     required this.category,
     required this.gender,
     required this.defaultImageUrl,
+    required this.description,
     required this.sizes,
     required this.colors,
     required this.variantMap,
@@ -157,3 +159,6 @@ class CartPayload {
     'totalInPaise'     : totalInPaise,
   };
 }
+
+// Convenience alias used by catalog_service API surface
+typedef ProductModel = ParentProduct;
