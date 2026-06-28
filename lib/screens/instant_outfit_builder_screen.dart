@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
 import 'package:instastyle/services/cart_service.dart';
 import 'sku_variant_picker.dart';
+import 'virtual_try_on_screen.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 // SKU INTEGRATION (additive — NO UI/UX change)
 // Resolves a catalogue parentId to a concrete child-variant CartPayload using
@@ -1506,6 +1507,37 @@ void dispose() {
           ),
 
           const SizedBox(height: 10),
+
+          // ── Virtual Try-On Button ───
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VirtualTryOnScreen()),
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              height: 50,
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: _C.magenta.withOpacity(0.08),
+                border: Border.all(color: _C.magenta.withOpacity(0.5), width: 1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.document_scanner_outlined, size: 18, color: _C.magenta),
+                    const SizedBox(width: 10),
+                    Text('VIRTUAL TRY-ON',
+                        style: _T.display(18, color: _C.magenta, spacing: 2)),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
           // ── CTA: Add to Cart spec — 240ms scale 1→1.04→1, springBounce ───
           GestureDetector(

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
 import 'package:instastyle/services/cart_service.dart';
+import 'virtual_try_on_screen.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SKU INTEGRATION (additive — NO UI/UX change)
@@ -857,24 +858,9 @@ Widget build(BuildContext context) {
         child: GestureDetector(
 
           onTap: () {
-
-            ScaffoldMessenger.of(context).showSnackBar(
-
-              SnackBar(
-
-                content: Text(
-                  'Virtual Try-On coming soon!',
-
-                  style: _T.label(
-                    13,
-                    color: _C.white,
-                  ),
-                ),
-
-                backgroundColor: _C.dark,
-
-                duration: const Duration(seconds: 2),
-              ),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VirtualTryOnScreen()),
             );
           },
 
