@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
 import 'package:instastyle/services/cart_service.dart';
@@ -1371,9 +1372,11 @@ Widget build(BuildContext context) {
                     aspectRatio: 0.75,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(2),
-                      child: Image.network(_cartItems[i].imageUrl,
+                      child: CachedNetworkImage(
+                          imageUrl: _cartItems[i].imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          placeholder: (_, __) => Container(color: _C.grey700),
+                          errorWidget: (_, __, ___) =>
                               Container(color: _C.grey700)),
                     ),
                   ),
@@ -1450,12 +1453,11 @@ class _OutfitCardState extends State<_OutfitCard>
       fit: StackFit.expand,
       children: [
         // ── Full-bleed image ────────────────────────────────────────────
-        Image.network(
-          outfit.imageUrl,
+        CachedNetworkImage(
+          imageUrl: outfit.imageUrl,
           fit: BoxFit.cover,
-          loadingBuilder: (_, child, p) =>
-              p == null ? child : Container(color: _C.grey150),
-          errorBuilder: (_, __, ___) => Container(
+          placeholder: (_, __) => Container(color: _C.grey150),
+          errorWidget: (_, __, ___) => Container(
             color: _C.grey150,
             child: Center(child: Icon(Icons.image_outlined,
                 color: _C.grey300, size: 48)),

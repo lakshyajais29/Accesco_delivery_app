@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -815,11 +816,13 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
                         SizedBox(
                           width: 64,
                           height: 64,
-                          child: Image.network(
-                            item.imageUrl,
+                          child: CachedNetworkImage(
+                            imageUrl: item.imageUrl,
+                            width: 64,
+                            height: 64,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                Container(color: _C.grey150),
+                            placeholder: (_, __) => Container(color: _C.grey150),
+                            errorWidget: (_, __, ___) => Container(color: _C.grey150),
                           ),
                         ),
                         const SizedBox(width: 12),

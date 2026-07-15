@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 
 class HeroOutfit {
@@ -148,10 +149,11 @@ class _HeroOutfitSlide extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // ── Full-bleed editorial image ────────────────
-        Image.network(
-          outfit.imageUrl,
+        CachedNetworkImage(
+          imageUrl: outfit.imageUrl,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
+          placeholder: (_, __) => Container(color: AppColors.brandWarmBrown.withOpacity(0.3)),
+          errorWidget: (_, __, ___) => Container(
             color: AppColors.brandWarmBrown.withOpacity(0.3),
             child: const Center(
               child: Icon(Icons.image_outlined,

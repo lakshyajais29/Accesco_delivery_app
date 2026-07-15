@@ -16,6 +16,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'sku_catalog.dart';
 import 'sku_variant_picker.dart';
@@ -803,9 +804,12 @@ class _CartSheet extends StatelessWidget {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    child: Image.network(item.imageUrl,
+                    child: CachedNetworkImage(
+                        imageUrl: item.imageUrl,
                         width: 52, height: 60, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        placeholder: (_, __) =>
+                            Container(width: 52, height: 60, color: _TC.surface),
+                        errorWidget: (_, __, ___) =>
                             Container(width: 52, height: 60, color: _TC.surface)),
                   ),
                   title: Text(item.productName,
@@ -949,10 +953,10 @@ class _ThriftCardState extends State<_ThriftCard> with TickerProviderStateMixin 
           Stack(children: [
             SizedBox(
               height: imageHeight, width: double.infinity,
-              child: Image.network(p.imageUrl, fit: BoxFit.cover,
-                  loadingBuilder: (_, child, prog) =>
-                      prog == null ? child : Container(height: imageHeight, color: _TC.surface),
-                  errorBuilder: (_, __, ___) => Container(
+              child: CachedNetworkImage(
+                  imageUrl: p.imageUrl, fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(height: imageHeight, color: _TC.surface),
+                  errorWidget: (_, __, ___) => Container(
                       height: imageHeight, color: _TC.surface,
                       child: Center(child: Icon(Icons.image_outlined, color: _TC.grey600, size: 32))))),
 

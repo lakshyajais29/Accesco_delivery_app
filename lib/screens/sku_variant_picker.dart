@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'sku_catalog.dart';
 
@@ -171,11 +172,13 @@ class _PickerSheetState extends State<_PickerSheet>
         // Thumbnail
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            v?.imageUrl ?? widget.parent.defaultImageUrl,
-            width: 80, height: 88, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                Container(width: 80, height: 88, color: _C.surface),
+          child: CachedNetworkImage(
+            imageUrl: v?.imageUrl ?? widget.parent.defaultImageUrl,
+            width: 80,
+            height: 88,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => Container(width: 80, height: 88, color: _C.surface),
+            errorWidget: (_, __, ___) => Container(width: 80, height: 88, color: _C.surface),
           ),
         ),
         const SizedBox(width: 14),

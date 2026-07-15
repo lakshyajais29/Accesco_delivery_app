@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
 import 'package:instastyle/services/cart_service.dart';
@@ -893,10 +894,11 @@ void dispose() {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(p.imageUrl,
+                    CachedNetworkImage(
+                        imageUrl: p.imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            Container(color: _C.grey150)),
+                        placeholder: (_, __) => Container(color: _C.grey150),
+                        errorWidget: (_, __, ___) => Container(color: _C.grey150)),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -1182,11 +1184,14 @@ void dispose() {
               child: Row(
                 children: [
                   SizedBox(
-                    width: 92, height: 108,
-                    child: Image.network(item.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            Container(color: _C.grey150)),
+                    width: 92,
+                    height: 108,
+                    child: CachedNetworkImage(
+                      imageUrl: item.imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(color: _C.grey150),
+                      errorWidget: (_, __, ___) => Container(color: _C.grey150),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -1399,10 +1404,11 @@ void dispose() {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                Image.network(alt.imageUrl,
+                                CachedNetworkImage(
+                                    imageUrl: alt.imageUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        Container(color: _C.grey150)),
+                                    placeholder: (_, __) => Container(color: _C.grey150),
+                                    errorWidget: (_, __, ___) => Container(color: _C.grey150)),
                                 Positioned(
                                   bottom: 0, left: 0, right: 0,
                                   child: Container(

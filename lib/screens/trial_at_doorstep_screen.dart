@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../services/tracking_service.dart';
@@ -855,11 +856,11 @@ Future<void> _syncTimerWithServer() async {
                                 children: [
                                   SizedBox(
                                     width: 48,
-                                    child: Image.network(
-                                      _items[i].imageUrl,
+                                    child: CachedNetworkImage(
+                                      imageUrl: _items[i].imageUrl,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          Container(color: _C.grey150),
+                                      placeholder: (_, __) => Container(color: _C.grey150),
+                                      errorWidget: (_, __, ___) => Container(color: _C.grey150),
                                     ),
                                   ),
                                   // FOMO flash overlay
@@ -1104,9 +1105,11 @@ Future<void> _syncTimerWithServer() async {
                       child: Column(
                         children: [
                           Expanded(
-                            child: Image.network(
-                              item.imageUrl, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
+                            child: CachedNetworkImage(
+                              imageUrl: item.imageUrl, fit: BoxFit.cover,
+                              placeholder: (_, __) =>
+                                  Container(color: _C.grey700),
+                              errorWidget: (_, __, ___) =>
                                   Container(color: _C.grey700),
                             ),
                           ),
@@ -1492,11 +1495,15 @@ Future<void> _syncTimerWithServer() async {
                     Stack(
                       children: [
                         SizedBox(
-                          width: 76, height: 92,
-                          child: Image.network(
-                            item.imageUrl, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                Container(color: _C.grey150),
+                          width: 76,
+                          height: 92,
+                          child: CachedNetworkImage(
+                            imageUrl: item.imageUrl,
+                            width: 76,
+                            height: 92,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(color: _C.grey150),
+                            errorWidget: (_, __, ___) => Container(color: _C.grey150),
                           ),
                         ),
                         // FOMO flash on image

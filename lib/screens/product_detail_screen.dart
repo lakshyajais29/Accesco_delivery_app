@@ -9,19 +9,32 @@ import '../theme/app_text.dart';
 import '../widgets/film_grain_overlay.dart';
 import 'virtual_try_on_screen.dart';
 import 'sku_variant_picker.dart';
+import 'wishlist_screen.dart';
+import '../services/wishlist_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PRODUCT DETAIL PAGE — InstaStyle Cinematic PDP
+// PRODUCT DETAIL PAGE — InstaStyle Cinematic PDP (LIGHT THEME)
 // Hero header + Glassmorphic body + Sticky action bar
+//
+// Uses the AppColors.*Light tokens (backgroundLight, surfaceCardLight,
+// separatorLight, textDark, textMutedLight) added alongside the dark palette.
+// AppText's helpers (outfitName, priceCurrent, body, featureLabel, etc.)
+// default their `color` param to the dark-mode tokens (ivoryWhite/mutedText),
+// so every call below passes an explicit light-theme color override.
+// Brand accents (brandWarmBrown, brandTan, brandDeepBrown) and signal colors
+// (fomoRed) are theme-agnostic and used unchanged.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ProductDetailScreen extends StatelessWidget {
   final ParentProduct product;
+  final String? heroTag;
 
-  const ProductDetailScreen({super.key, required this.product});
+  const ProductDetailScreen({super.key, required this.product, this.heroTag});
 
-  static Route<void> route(ParentProduct product) => PageRouteBuilder(
-        pageBuilder: (_, __, ___) => ProductDetailScreen(product: product),
+  static Route<void> route(ParentProduct product, {String? heroTag}) =>
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) =>
+            ProductDetailScreen(product: product, heroTag: heroTag),
         transitionDuration: const Duration(milliseconds: 420),
         transitionsBuilder: (_, animation, __, child) => FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
@@ -31,41 +44,44 @@ class ProductDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mq     = MediaQuery.of(context);
+    final mq = MediaQuery.of(context);
     final screenH = mq.size.height;
-    final topPad  = mq.padding.top;
-    final botPad  = mq.padding.bottom;
-    final imageH  = screenH * 0.57;
+    final topPad = mq.padding.top;
+    final botPad = mq.padding.bottom;
+    final imageH = screenH * 0.57;
 
     final similar = CatalogService.getSimilarProducts(product);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
+      // Kept light (white) status bar icons — this sits over the hero photo
+      // and its dark top gradient, not over the light glass panel below.
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.backgroundBase,
+        backgroundColor: AppColors.backgroundLight,
         extendBodyBehindAppBar: true,
         body: FilmGrainOverlay(
-          opacity: 0.045,
+          opacity: 0.03,
           child: Stack(
             children: [
-
               // ── 1. HERO IMAGE — fixed background ──────────────────────────
               Positioned(
-                top: 0, left: 0, right: 0,
+                top: 0,
+                left: 0,
+                right: 0,
                 height: imageH,
                 child: Hero(
-                  tag: product.id,
+                  tag: heroTag ?? product.id,
                   child: Image.network(
                     product.defaultImageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      color: AppColors.brandWarmBrown.withOpacity(0.22),
+                      color: AppColors.brandWarmBrown.withOpacity(0.12),
                       child: const Center(
                         child: Icon(
                           Icons.image_outlined,
-                          color: AppColors.mutedText,
+                          color: AppColors.textMutedLight,
                           size: 72,
                         ),
                       ),
@@ -75,15 +91,20 @@ class ProductDetailScreen extends StatelessWidget {
               ),
 
               // ── 2. TOP GRADIENT — back/icons readability ───────────────────
+              // Stays dark-to-transparent: it darkens the photo itself so the
+              // floating icon buttons and system status bar read clearly,
+              // independent of the app's light/dark theme.
               Positioned(
-                top: 0, left: 0, right: 0,
-                height: imageH * 0.44,
+                top: 0,
+                left: 0,
+                right: 0,
+                height: imageH * 0.38,
                 child: const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Color(0xCC000000), Colors.transparent],
+                      colors: [Color(0x66000000), Colors.transparent],
                     ),
                   ),
                 ),
@@ -122,9 +143,32 @@ class ProductDetailScreen extends StatelessWidget {
                       icon: Icons.arrow_back_ios_new_rounded,
                       onTap: () => Navigator.pop(context),
                     ),
-                    _GlassIconButton(
-                      icon: Icons.favorite_border_rounded,
-                      onTap: () {},
+                    StatefulBuilder(
+                      builder: (context, setButtonState) {
+                        final isWishlisted =
+                            WishlistService.instance.contains(product);
+
+                        return _GlassIconButton(
+                          icon: isWishlisted
+                              ? Icons.favorite
+                              : Icons.favorite_border_rounded,
+                          iconColor: isWishlisted ? AppColors.fomoRed : null,
+                          onTap: () {
+                            WishlistService.instance.toggle(product);
+                            setButtonState(() {});
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  WishlistService.instance.contains(product)
+                                      ? '${product.name} added to wishlist'
+                                      : '${product.name} removed from wishlist',
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -132,7 +176,9 @@ class ProductDetailScreen extends StatelessWidget {
 
               // ── 5. STICKY ACTION BAR ───────────────────────────────────────
               Positioned(
-                bottom: 0, left: 0, right: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
                 child: _StickyActionBar(product: product, botPad: botPad),
               ),
             ],
@@ -167,16 +213,22 @@ class _GlassBody extends StatelessWidget {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(20, 18, 16, 0.91),
+            color: AppColors.surfaceCardLight.withOpacity(0.92),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(
-              top: BorderSide(color: AppColors.separator, width: 1),
+            border: const Border(
+              top: BorderSide(color: AppColors.separatorLight, width: 1),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 24,
+                offset: const Offset(0, -6),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // Drag handle
               Center(
                 child: Container(
@@ -184,7 +236,7 @@ class _GlassBody extends StatelessWidget {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.mutedText.withOpacity(0.32),
+                    color: AppColors.textMutedLight.withOpacity(0.35),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -195,7 +247,6 @@ class _GlassBody extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
                     // ── Brand + category chips ─────────────────────────────
                     Row(
                       children: [
@@ -203,14 +254,14 @@ class _GlassBody extends StatelessWidget {
                           product.brand,
                           style: AppText.featureLabel(
                             size: 10,
-                            color: AppColors.brandTan,
+                            color: AppColors.brandDeepBrown,
                           ),
                         ),
                         const SizedBox(width: 10),
                         _Chip(label: product.category.toUpperCase()),
                         if (product.isNew) ...[
                           const SizedBox(width: 8),
-                          _Chip(
+                          const _Chip(
                             label: 'NEW DROP',
                             filled: true,
                           ),
@@ -223,7 +274,8 @@ class _GlassBody extends StatelessWidget {
                     // ── Product title ──────────────────────────────────────
                     Text(
                       product.name,
-                      style: AppText.outfitName(size: 34),
+                      style: AppText.outfitName(size: 34)
+                          .copyWith(color: AppColors.textDark),
                     ),
 
                     const SizedBox(height: 16),
@@ -235,13 +287,18 @@ class _GlassBody extends StatelessWidget {
                       children: [
                         Text(
                           product.lowestPrice,
-                          style: AppText.priceCurrent(size: 26),
+                          style: AppText.priceCurrent(size: 26)
+                              .copyWith(color: AppColors.textDark),
                         ),
                         if (product.originalPriceFormatted != null) ...[
                           const SizedBox(width: 10),
                           Text(
                             product.originalPriceFormatted!,
-                            style: AppText.priceOriginal(size: 16),
+                            style: AppText.priceOriginal(size: 16).copyWith(
+                              color: AppColors.textMutedLight.withOpacity(0.75),
+                              decorationColor:
+                                  AppColors.textMutedLight.withOpacity(0.75),
+                            ),
                           ),
                         ],
                       ],
@@ -264,6 +321,7 @@ class _GlassBody extends StatelessWidget {
                             _FomoChip(
                               icon: Icons.local_fire_department_outlined,
                               label: '${product.orderedToday} ordered today',
+                              isRecency: true,
                             ),
                           if (product.stock < 4 && product.stock > 0)
                             _FomoChip(
@@ -277,8 +335,8 @@ class _GlassBody extends StatelessWidget {
                     SizedBox(height: _hasFomo ? 22 : 0),
 
                     // ── Separator ──────────────────────────────────────────
-                    Divider(
-                      color: AppColors.separator.withOpacity(0.55),
+                    const Divider(
+                      color: AppColors.separatorLight,
                       height: 1,
                       thickness: 1,
                     ),
@@ -290,7 +348,7 @@ class _GlassBody extends StatelessWidget {
                       'ABOUT THIS PIECE',
                       style: AppText.featureLabel(
                         size: 10,
-                        color: AppColors.brandTan,
+                        color: AppColors.brandDeepBrown,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -298,7 +356,7 @@ class _GlassBody extends StatelessWidget {
                       product.description,
                       style: AppText.body(
                         size: 14.5,
-                        color: AppColors.ivoryWhite.withOpacity(0.70),
+                        color: AppColors.textDark.withOpacity(0.68),
                       ),
                     ),
 
@@ -308,7 +366,8 @@ class _GlassBody extends StatelessWidget {
                     if (similar.isNotEmpty)
                       Text(
                         'YOU MIGHT ALSO LIKE',
-                        style: AppText.featureLabel(size: 11),
+                        style: AppText.featureLabel(size: 11)
+                            .copyWith(color: AppColors.textDark.withOpacity(0.85)),
                       ),
                   ],
                 ),
@@ -362,15 +421,21 @@ class _SimilarProductCard extends StatelessWidget {
         width: 142,
         height: 224,
         decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
+          color: AppColors.surfaceCardLight,
           borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.separator, width: 1),
+          border: Border.all(color: AppColors.separatorLight, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // Product image
             Expanded(
               flex: 7,
@@ -379,11 +444,11 @@ class _SimilarProductCard extends StatelessWidget {
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  color: AppColors.brandWarmBrown.withOpacity(0.15),
+                  color: AppColors.brandWarmBrown.withOpacity(0.10),
                   child: const Center(
                     child: Icon(
                       Icons.image_outlined,
-                      color: AppColors.mutedText,
+                      color: AppColors.textMutedLight,
                       size: 28,
                     ),
                   ),
@@ -407,7 +472,7 @@ class _SimilarProductCard extends StatelessWidget {
                           product.brand,
                           style: AppText.featureLabel(
                             size: 8,
-                            color: AppColors.brandTan,
+                            color: AppColors.brandDeepBrown,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -418,6 +483,7 @@ class _SimilarProductCard extends StatelessWidget {
                           style: AppText.body(
                             size: 11,
                             weight: FontWeight.w500,
+                            color: AppColors.textDark,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -426,7 +492,8 @@ class _SimilarProductCard extends StatelessWidget {
                     ),
                     Text(
                       product.lowestPrice,
-                      style: AppText.precisionData(size: 12),
+                      style: AppText.priceCurrent(size: 12)
+                          .copyWith(color: AppColors.brandDeepBrown),
                     ),
                   ],
                 ),
@@ -459,14 +526,20 @@ class _StickyActionBar extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.fromLTRB(16, 12, 16, safePad),
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(20, 18, 16, 0.90),
-            border: Border(
-              top: BorderSide(color: AppColors.separator, width: 1),
+            color: AppColors.surfaceCardLight.withOpacity(0.94),
+            border: const Border(
+              top: BorderSide(color: AppColors.separatorLight, width: 1),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, -3),
+              ),
+            ],
           ),
           child: Row(
             children: [
-
               // ── Virtual Try-On (secondary) ───────────────────────────────
               Expanded(
                 child: _TryOnButton(
@@ -518,10 +591,10 @@ class _TryOnButtonState extends State<_TryOnButton> {
         height: 54,
         decoration: BoxDecoration(
           color: _pressed
-              ? AppColors.brandTan.withOpacity(0.08)
+              ? AppColors.brandTan.withOpacity(0.12)
               : Colors.transparent,
           border: Border.all(
-            color: AppColors.brandTan.withOpacity(_pressed ? 0.9 : 0.55),
+            color: AppColors.brandDeepBrown.withOpacity(_pressed ? 0.9 : 0.45),
             width: 1,
           ),
         ),
@@ -532,7 +605,7 @@ class _TryOnButtonState extends State<_TryOnButton> {
               'TRY-ON',
               style: AppText.featureLabel(
                 size: 11,
-                color: AppColors.brandTan,
+                color: AppColors.brandDeepBrown,
               ),
             ),
             const SizedBox(width: 5),
@@ -565,7 +638,7 @@ class _AddToBagButtonState extends State<_AddToBagButton> {
           SnackBar(
             content: Text(
               '${widget.product.name} added to bag.',
-              style: AppText.body(size: 13),
+              style: AppText.body(size: 13, color: AppColors.ivoryWhite),
             ),
             backgroundColor: AppColors.surfaceElevated,
             behavior: SnackBarBehavior.floating,
@@ -582,6 +655,9 @@ class _AddToBagButtonState extends State<_AddToBagButton> {
 
   @override
   Widget build(BuildContext context) {
+    // The filled CTA gradient + ivory label stays as designed — a saturated
+    // brand-brown button with light text reads correctly on both light and
+    // dark surfaces, so it's unchanged aside from a lighter drop shadow.
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapCancel: () => setState(() => _pressed = false),
@@ -603,12 +679,12 @@ class _AddToBagButtonState extends State<_AddToBagButton> {
           // Sharp 0-radius per PrimaryCTA spec — authority
           boxShadow: _pressed
               ? null
-              : const [
+              : [
                   BoxShadow(
-                    color: Color.fromRGBO(196, 168, 130, 0.28),
-                    offset: Offset(0, 1),
-                    blurRadius: 0,
-                    spreadRadius: -1,
+                    color: AppColors.brandWarmBrown.withOpacity(0.30),
+                    offset: const Offset(0, 3),
+                    blurRadius: 10,
+                    spreadRadius: -2,
                   ),
                 ],
         ),
@@ -636,7 +712,12 @@ class _AddToBagButtonState extends State<_AddToBagButton> {
 class _GlassIconButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _GlassIconButton({required this.icon, required this.onTap});
+  final Color? iconColor;
+  const _GlassIconButton({
+    required this.icon,
+    required this.onTap,
+    this.iconColor,
+  });
 
   @override
   State<_GlassIconButton> createState() => _GlassIconButtonState();
@@ -663,11 +744,21 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Color.fromRGBO(20, 18, 16, _pressed ? 0.80 : 0.52),
+              // Frosted white glass over the hero photo — reads as light-theme
+              // chrome while the top gradient keeps it visible on busy images.
+              color: AppColors.surfaceCardLight
+                  .withOpacity(_pressed ? 0.90 : 0.65),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.separator, width: 1),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.7),
+                width: 1,
+              ),
             ),
-            child: Icon(widget.icon, color: AppColors.ivoryWhite, size: 20),
+            child: Icon(
+              widget.icon,
+              color: widget.iconColor ?? AppColors.textDark,
+              size: 20,
+            ),
           ),
         ),
       ),
@@ -686,17 +777,17 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: filled ? AppColors.brandWarmBrown.withOpacity(0.88) : null,
+        color: filled ? AppColors.brandWarmBrown.withOpacity(0.90) : null,
         border: filled
             ? null
-            : Border.all(color: AppColors.separator, width: 1),
-        borderRadius: BorderRadius.circular(100),
+            : Border.all(color: AppColors.separatorLight, width: 1),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Text(
         label,
         style: AppText.featureLabel(
           size: 8,
-          color: filled ? AppColors.ivoryWhite : AppColors.mutedText,
+          color: filled ? AppColors.ivoryWhite : AppColors.textMutedLight,
         ),
       ),
     );
@@ -704,38 +795,55 @@ class _Chip extends StatelessWidget {
 }
 
 /// Inline signal row chip — viewer count, order velocity, or stock urgency.
+///
+/// Per Chapter 15 (FOMO Design System) of the design spec:
+/// - Stock Counter ('Only X left'): Montserrat Black · FOMO Red (Chapter 04's
+///   non-negotiable typography rule takes precedence over Ch.15's Roboto
+///   Mono mention for this one).
+/// - Social Proof ('X viewing now'): Montserrat Black · muted text colour.
+/// - Recency Signal ('X ordered today'): Montserrat Black · brand tan.
+/// All three are Feature Label territory, not body copy — hence
+/// AppText.featureLabel / AppText.stockCounter (Montserrat), never
+/// AppText.secondary (Inter).
 class _FomoChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isUrgent;
+  final bool isRecency;
 
   const _FomoChip({
     required this.icon,
     required this.label,
     this.isUrgent = false,
+    this.isRecency = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isUrgent ? AppColors.fomoRed : AppColors.mutedText;
+    final Color color = isUrgent
+        ? AppColors.fomoRed
+        : (isRecency ? AppColors.brandTan : AppColors.textMutedLight);
     final borderColor =
-        isUrgent ? AppColors.fomoRed.withOpacity(0.55) : AppColors.separator;
+        isUrgent ? AppColors.fomoRed.withOpacity(0.45) : AppColors.separatorLight;
+    final TextStyle textStyle = isUrgent
+        ? AppText.stockCounter(size: 10)
+        : AppText.featureLabel(size: 9, color: color);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
+        color: isUrgent
+            ? AppColors.fomoRed.withOpacity(0.06)
+            : AppColors.surfaceCardLight,
         border: Border.all(color: borderColor, width: 1),
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 11, color: color),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: AppText.secondary(size: 11).copyWith(color: color),
-          ),
+          Text(label, style: textStyle),
         ],
       ),
     );

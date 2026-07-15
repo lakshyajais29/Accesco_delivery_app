@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
@@ -801,17 +802,12 @@ class _ShareableCard extends StatelessWidget {
           AspectRatio(
             aspectRatio: 3 / 4,
             child: Stack(fit: StackFit.expand, children: [
-              Image.network(_kProductImage,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (_, child, p) => p == null
-                      ? child
-                      : Container(
-                          color: _C.grey150,
-                          child: const Center(
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 1.5, color: _C.magenta))),
-                  errorBuilder: (_, __, ___) =>
-                      Container(color: _C.grey150)),
+              CachedNetworkImage(
+                imageUrl: _kProductImage,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(color: _C.grey150),
+                errorWidget: (_, __, ___) => Container(color: _C.grey150),
+              ),
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -1173,10 +1169,15 @@ class _Phase2NotificationPreviewState
                                 const SizedBox(width: 8),
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
-                                  child: Image.network(_kProductImage,
+                                  child: CachedNetworkImage(
+                                      imageUrl: _kProductImage,
                                       width: 44, height: 44,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
+                                      placeholder: (_, __) =>
+                                          Container(
+                                              width: 44, height: 44,
+                                              color: _C.grey300),
+                                      errorWidget: (_, __, ___) =>
                                           Container(
                                               width: 44, height: 44,
                                               color: _C.grey300)),
@@ -1707,10 +1708,14 @@ class _OutfitResultCard extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(2),
-          child: Image.network(_kProductImage,
-              width: 80, height: 100, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(width: 80, height: 100, color: _C.grey150)),
+          child: CachedNetworkImage(
+            imageUrl: _kProductImage,
+            width: 80,
+            height: 100,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => Container(width: 80, height: 100, color: _C.grey150),
+            errorWidget: (_, __, ___) => Container(width: 80, height: 100, color: _C.grey150),
+          ),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -1828,10 +1833,12 @@ class _Phase5CTA extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.network(_kProductImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Container(color: _C.grey150)),
+                CachedNetworkImage(
+                  imageUrl: _kProductImage,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(color: _C.grey150),
+                  errorWidget: (_, __, ___) => Container(color: _C.grey150),
+                ),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -1989,10 +1996,14 @@ class _OutfitMiniCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
-            child: Image.network(_kProductImage,
-                width: 48, height: 60, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(width: 48, height: 60, color: _C.grey300)),
+            child: CachedNetworkImage(
+              imageUrl: _kProductImage,
+              width: 48,
+              height: 60,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(width: 48, height: 60, color: _C.grey300),
+              errorWidget: (_, __, ___) => Container(width: 48, height: 60, color: _C.grey300),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

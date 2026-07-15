@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 
@@ -163,10 +164,11 @@ class _RailCardState extends State<_RailCard>
                       0, 0, 0.88, 0, -8,
                       0, 0, 0, 1, 0,
                     ]),
-                    child: Image.network(
-                      widget.item.imageUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: widget.item.imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (_, __) => Container(color: AppColors.surfaceCard),
+                      errorWidget: (_, __, ___) => Container(
                         color: AppColors.surfaceCard,
                         child: Icon(
                           Icons.checkroom_outlined,
@@ -174,8 +176,6 @@ class _RailCardState extends State<_RailCard>
                           color: AppColors.brandTan.withOpacity(0.3),
                         ),
                       ),
-                      loadingBuilder: (_, child, p) =>
-                          p == null ? child : Container(color: AppColors.surfaceCard),
                     ),
                   ),
 

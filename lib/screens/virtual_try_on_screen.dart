@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -201,9 +202,11 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
               bottom: MediaQuery.of(context).size.height * 0.35,
               left: MediaQuery.of(context).size.width * 0.1,
               right: MediaQuery.of(context).size.width * 0.1,
-              child: Image.network(
-                'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&q=80',
+              child: CachedNetworkImage(
+                imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&q=80',
                 fit: BoxFit.contain,
+                placeholder: (_, __) => const SizedBox.shrink(),
+                errorWidget: (_, __, ___) => const SizedBox.shrink(),
               ),
             ),
 
