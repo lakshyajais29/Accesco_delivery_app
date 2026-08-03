@@ -107,3 +107,118 @@ class AppColors {
     ],
   );
 }
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// EDITORIAL LIGHT PALETTE — the app-wide design language.
+///
+/// Warm ivory surfaces, a single warm-brown brand accent, and hairline rules.
+/// The legacy [AppColors] constants above are retained untouched so existing
+/// screens keep compiling while they migrate over to these tokens.
+/// ═══════════════════════════════════════════════════════════════════════════
+class AppPalette {
+  AppPalette._();
+
+  // ── Surfaces ───────────────────────────────────────────────────────────
+  /// Page background. Warm ivory — never pure white.
+  static const Color canvas = Color(0xFFFBF9F6);
+
+  /// Cards, sheets, app bars. The lifted plane above [canvas].
+  static const Color surface = Color(0xFFFFFFFF);
+
+  /// Editorial banners, image placeholders, inactive tiles. Warm beige.
+  static const Color surfaceMuted = Color(0xFFF2EDE6);
+
+  /// Pressed / hovered fills on light surfaces.
+  static const Color surfaceSunken = Color(0xFFEDE7DE);
+
+  /// Inverted surface — dark CTAs, snackbars, sold-out overlays.
+  static const Color ink = Color(0xFF1C1917);
+
+  // ── Text ───────────────────────────────────────────────────────────────
+  /// Headlines and primary copy. Warm near-black.
+  static const Color textPrimary = Color(0xFF1C1917);
+
+  /// Body copy, descriptions, supporting sentences.
+  static const Color textSecondary = Color(0xFF6F6660);
+
+  /// Metadata, placeholders, disabled labels.
+  static const Color textTertiary = Color(0xFFA39A92);
+
+  /// Text drawn on [ink] or on the brand accent.
+  static const Color textOnDark = Color(0xFFFAF7F2);
+
+  // ── Brand ──────────────────────────────────────────────────────────────
+  /// Primary accent. Active nav, links, key affordances.
+  static const Color accent = Color(0xFF8B6347);
+
+  /// Soft accent. Selected chip fills, tinted icon wells.
+  static const Color accentSoft = Color(0xFFEDE3D8);
+
+  /// Pressed accent state.
+  static const Color accentDeep = Color(0xFF5C3D22);
+
+  /// Gilded highlight — rules under headlines, premium markers.
+  static const Color gold = Color(0xFFC4A882);
+
+  // ── Signals ────────────────────────────────────────────────────────────
+  static const Color danger = Color(0xFFC0392B);
+  static const Color warning = Color(0xFFD4870A);
+  static const Color success = Color(0xFF3F7D58);
+  static const Color info = Color(0xFF5B6E8C);
+
+  /// Soft signal washes for badge and banner backgrounds.
+  static const Color dangerSoft = Color(0xFFFBEDEB);
+  static const Color warningSoft = Color(0xFFFDF3E3);
+  static const Color successSoft = Color(0xFFECF3EF);
+
+  // ── Structural ─────────────────────────────────────────────────────────
+  /// Hairline rules. Barely visible — structure, not decoration.
+  static const Color line = Color(0xFFEAE4DC);
+
+  /// Stronger divider for section breaks.
+  static const Color lineStrong = Color(0xFFDCD3C8);
+
+  /// Scrim behind modals and bottom sheets.
+  static const Color scrim = Color(0x591C1917);
+
+  // ── Pre-computed alpha variants ────────────────────────────────────────
+  // Declared as consts so they never allocate inside build()/paint().
+  static const Color inkA04 = Color(0x0A1C1917);
+  static const Color inkA08 = Color(0x141C1917);
+  static const Color inkA12 = Color(0x1F1C1917);
+  static const Color inkA55 = Color(0x8C1C1917);
+  static const Color inkA70 = Color(0xB31C1917);
+  static const Color surfaceA80 = Color(0xCCFFFFFF);
+  static const Color surfaceA92 = Color(0xEBFFFFFF);
+  static const Color accentA12 = Color(0x1F8B6347);
+
+  // ── Gradients ──────────────────────────────────────────────────────────
+  /// Bottom-up scrim over editorial photography so text stays legible.
+  static const LinearGradient photoScrim = LinearGradient(
+    begin: Alignment.bottomCenter,
+    end: Alignment.topCenter,
+    stops: [0.0, 0.55, 1.0],
+    colors: [
+      Color(0xB31C1917),
+      Color(0x4D1C1917),
+      Color(0x001C1917),
+    ],
+  );
+
+  /// Skeleton shimmer sweep on warm surfaces.
+  static const LinearGradient shimmerSweep = LinearGradient(
+    stops: [0.0, 0.5, 1.0],
+    colors: [
+      Color(0xFFEFE9E1),
+      Color(0xFFF8F4EF),
+      Color(0xFFEFE9E1),
+    ],
+  );
+
+  /// Warm wash used behind editorial banner cards.
+  static const LinearGradient bannerWash = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFF6F1EA), Color(0xFFEFE7DC)],
+  );
+}

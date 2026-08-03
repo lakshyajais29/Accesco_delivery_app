@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/ds/ds.dart';
 
 class VirtualTryOnScreen extends StatefulWidget {
   const VirtualTryOnScreen({super.key});
@@ -139,7 +140,7 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                   radius: 1.2,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withValues(alpha: 0.8),
                   ],
                   stops: const [0.4, 1.0],
                 ),
@@ -163,7 +164,7 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                     decoration: BoxDecoration(
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFC8A97E).withOpacity(0.8),
+                          color: const Color(0xFFC8A97E).withValues(alpha: 0.8),
                           blurRadius: 15,
                           spreadRadius: 2,
                         ),
@@ -222,7 +223,7 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                   filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                   child: Container(
                     padding: const EdgeInsets.all(8),
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     child: const Icon(Icons.close, color: Colors.white, size: 24),
                   ),
                 ),
@@ -242,10 +243,10 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),
@@ -256,10 +257,10 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                         _isScanComplete
                             ? 'VIRTUAL FIT COMPLETE'
                             : 'AI BODY MAPPING',
-                        style: GoogleFonts.bebasNeue(
-                          color: Colors.white,
-                          fontSize: 24,
-                          letterSpacing: 2,
+                        style: AppType.displaySmall.copyWith(
+                          color: AppPalette.textOnDark,
+                          fontSize: 26,
+                          letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -283,19 +284,20 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                           height: 54,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF8B7536), Color(0xFFC8A97E)],
+                              colors: [
+                                AppPalette.accent,
+                                AppPalette.gold,
+                              ],
                             ),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppRadii.field,
                           ),
                           child: Center(
                             child: Text(
                               _isScanComplete
                                   ? 'ADD TO TRIAL PACK'
                                   : (_isScanning ? 'SCANNING...' : 'START SCAN'),
-                              style: GoogleFonts.bebasNeue(
-                                color: Colors.white,
-                                fontSize: 20,
-                                letterSpacing: 2,
+                              style: AppType.button.copyWith(
+                                color: AppPalette.textOnDark,
                               ),
                             ),
                           ),

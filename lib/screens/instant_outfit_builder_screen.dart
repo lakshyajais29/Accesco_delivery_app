@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../widgets/ds/ds.dart';
 import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
 import 'package:instastyle/services/cart_service.dart';
 import 'sku_variant_picker.dart';
@@ -62,45 +62,59 @@ CartPayload _skuPayloadFor({
   );
 }
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+/// Screen-local aliases onto the design system — see [AppPalette]. Names are
+/// the originals so the layout below is untouched; the values are what re-skin
+/// this screen. New colours belong in [AppPalette], not here.
 class _C {
-  static const white   = Color(0xFFFFFFFF);
-  static const bg      = Color(0xFFFFFFFF);
-  static const cardBg  = Color(0xFFF2F2F2);
-  static const grey100 = Color(0xFFF5F5F5);
-  static const grey150 = Color(0xFFEEEEEE);
-  static const grey300 = Color(0xFFCCCCCC);
-  static const grey500 = Color(0xFF999999);
-  static const grey700 = Color(0xFF555555);
-  static const dark    = Color(0xFF0D0D0D);
-  static const magenta = Color(0xFFE91E8C);
-  static const sale    = Color(0xFFE53935);
-  static const green   = Color(0xFF4CAF50);
-  static const fomoFlash = Color(0xFFC0392B); // FOMO price flash colour
+  static const white     = AppPalette.surface;
+  static const bg        = AppPalette.canvas;
+  static const cardBg    = AppPalette.surfaceMuted;
+  static const grey100   = AppPalette.surfaceMuted;
+  static const grey150   = AppPalette.line;
+  static const grey300   = AppPalette.lineStrong;
+  static const grey500   = AppPalette.textTertiary;
+  static const grey700   = AppPalette.textSecondary;
+  static const dark      = AppPalette.ink;
+  static const magenta   = AppPalette.accent;
+  static const sale      = AppPalette.danger;
+  static const green     = AppPalette.success;
+  static const fomoFlash = AppPalette.danger;
 }
 
+/// Screen-local type aliases onto the design system. `display` was Bebas Neue;
+/// it now resolves to the app's Cormorant Garamond, scaled up here because a
+/// serif sets far larger than a condensed face at the same point size.
 class _T {
   static TextStyle display(double size,
           {Color color = _C.dark, double spacing = 0}) =>
-      GoogleFonts.bebasNeue(
-          fontSize: size, color: color, letterSpacing: spacing);
+      AppType.displayMedium.copyWith(
+        fontSize: size * 1.12,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle label(double size,
           {Color color = _C.dark,
           FontWeight fw = FontWeight.w600,
           double spacing = 0.5}) =>
-      GoogleFonts.jost(
-          fontSize: size,
-          fontWeight: fw,
-          color: color,
-          letterSpacing: spacing);
+      AppType.label.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle body(double size,
           {Color color = _C.grey700, FontWeight fw = FontWeight.w400}) =>
-      GoogleFonts.jost(fontSize: size, fontWeight: fw, color: color);
+      AppType.bodyMedium.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+      );
 
   static TextStyle mono(double size,
           {Color color = _C.dark, FontWeight fw = FontWeight.w500}) =>
-      GoogleFonts.robotoMono(fontSize: size, fontWeight: fw, color: color);
+      AppType.mono.copyWith(fontSize: size, fontWeight: fw, color: color);
 }
 
 // ─── CUBIC BEZIER CURVES (from spec) ─────────────────────────────────────────
@@ -825,8 +839,8 @@ void dispose() {
                         child: CustomPaint(
                           painter: _GridPatternPainter(
                             color: active
-                                ? _C.magenta.withOpacity(0.08)
-                                : occ.tint.withOpacity(0.06),
+                                ? _C.magenta.withValues(alpha: 0.08)
+                                : occ.tint.withValues(alpha: 0.06),
                           ),
                         ),
                       ),
@@ -906,7 +920,7 @@ void dispose() {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.78),
+                            Colors.black.withValues(alpha: 0.78),
                           ],
                           stops: const [0.35, 1.0],
                         ),
@@ -1071,7 +1085,7 @@ void dispose() {
                                     ? 0
                                     : _selectedPersona]
                                 .label,
-                            _C.magenta.withOpacity(0.1), _C.magenta,
+                            _C.magenta.withValues(alpha: 0.1), _C.magenta,
                           ),
                         ],
                       ),
@@ -1170,7 +1184,7 @@ void dispose() {
               width: swapping ? 2 : 1),
           boxShadow: swapping
               ? [BoxShadow(
-                  color: _C.magenta.withOpacity(0.22),
+                  color: _C.magenta.withValues(alpha: 0.22),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 )]
@@ -1414,7 +1428,7 @@ void dispose() {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 6),
-                                    color: _C.dark.withOpacity(0.85),
+                                    color: _C.dark.withValues(alpha: 0.85),
                                     child: Center(
                                       child: Text('SELECT',
                                           style: _T.label(8,
@@ -1455,10 +1469,10 @@ void dispose() {
       decoration: BoxDecoration(
         color: _C.white,
         border: Border(
-            top: BorderSide(color: _C.grey150.withOpacity(0.8), width: 1)),
+            top: BorderSide(color: _C.grey150.withValues(alpha: 0.8), width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withValues(alpha: 0.07),
             blurRadius: 24,
             offset: const Offset(0, -6),
           ),
@@ -1486,10 +1500,10 @@ void dispose() {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Color.lerp(
-                          _C.green, _C.green.withOpacity(0.25), t),
+                          _C.green, _C.green.withValues(alpha: 0.25), t),
                       boxShadow: [
                         BoxShadow(
-                          color: _C.green.withOpacity(0.4 * (1 - t)),
+                          color: _C.green.withValues(alpha: 0.4 * (1 - t)),
                           blurRadius: 6,
                           spreadRadius: 2,
                         ),
@@ -1527,8 +1541,8 @@ void dispose() {
               height: 50,
               margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
-                color: _C.magenta.withOpacity(0.08),
-                border: Border.all(color: _C.magenta.withOpacity(0.5), width: 1),
+                color: _C.magenta.withValues(alpha: 0.08),
+                border: Border.all(color: _C.magenta.withValues(alpha: 0.5), width: 1),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Center(
@@ -1651,7 +1665,7 @@ class _FabricWavePainter extends CustomPainter {
       final opacity = 1.0 - row * 0.15;
 
       final paint = Paint()
-        ..color = const Color(0xFFE91E8C).withOpacity(opacity)
+        ..color = const Color(0xFFE91E8C).withValues(alpha: opacity)
         ..strokeWidth = 2.2
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
@@ -1677,7 +1691,7 @@ class _GrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rng   = Random((seed * 1000).toInt());
-    final paint = Paint()..color = Colors.white.withOpacity(0.028);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.028);
     for (int i = 0; i < 300; i++) {
       canvas.drawCircle(
         Offset(rng.nextDouble() * size.width,

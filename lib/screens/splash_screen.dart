@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+
+import '../widgets/ds/ds.dart';
 import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -76,19 +78,61 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: _initialized
-          ? SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: _controller.value.size.width,
-                  height: _controller.value.size.height,
-                  child: VideoPlayer(_controller),
+      backgroundColor: AppPalette.ink,
+      body: AnimatedSwitcher(
+        duration: AppMotion.normal,
+        child: _initialized
+            ? SizedBox.expand(
+                key: const ValueKey('video'),
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: _controller.value.size.width,
+                    height: _controller.value.size.height,
+                    child: VideoPlayer(_controller),
+                  ),
                 ),
+              )
+            // Branded hold rather than a black frame: if the asset is slow to
+            // decode — or missing entirely — the first thing a user sees is
+            // still the wordmark, not a void.
+            : const _SplashBrandMark(key: ValueKey('brand')),
+      ),
+    );
+  }
+}
+
+class _SplashBrandMark extends StatelessWidget {
+  const _SplashBrandMark({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          RichText(
+            text: TextSpan(
+              style: AppType.wordmark.copyWith(
+                fontSize: 34,
+                color: AppPalette.textOnDark,
               ),
-            )
-          : const SizedBox.shrink(), // pure black while initializing
+              children: const [
+                TextSpan(text: 'Insta'),
+                TextSpan(
+                  text: 'Style',
+                  style: TextStyle(color: AppPalette.gold),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '15-Minute Fashion Delivery'.toUpperCase(),
+            style: AppType.eyebrow.copyWith(color: AppPalette.gold),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -3,53 +3,68 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/ds/ds.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ─── DESIGN TOKENS (from home_screen.dart) ───────────────────────────────────
+/// Screen-local aliases onto the design system — see [AppPalette]. Names are
+/// the originals so the layout below is untouched; the values are what re-skin
+/// this screen. New colours belong in [AppPalette], not here.
 class _C {
-  static const white   = Color(0xFFFFFFFF);
-  static const bg      = Color(0xFFFFFFFF);
-  static const cardBg  = Color(0xFFF2F2F2);
-  static const grey100 = Color(0xFFF5F5F5);
-  static const grey150 = Color(0xFFEEEEEE);
-  static const grey300 = Color(0xFFCCCCCC);
-  static const grey500 = Color(0xFF999999);
-  static const grey700 = Color(0xFF555555);
-  static const dark    = Color(0xFF0D0D0D);
-  static const magenta = Color(0xFFE91E8C);
-  static const sale    = Color(0xFFE53935);
-  static const amber   = Color(0xFFFF6F00);
+  static const white   = AppPalette.surface;
+  static const bg      = AppPalette.canvas;
+  static const cardBg  = AppPalette.surfaceMuted;
+  static const grey100 = AppPalette.surfaceMuted;
+  static const grey150 = AppPalette.line;
+  static const grey300 = AppPalette.lineStrong;
+  static const grey500 = AppPalette.textTertiary;
+  static const grey700 = AppPalette.textSecondary;
+  static const dark    = AppPalette.ink;
+  static const magenta = AppPalette.accent;
+  static const sale    = AppPalette.danger;
+  static const amber   = AppPalette.warning;
 
   // Profile-specific
-  static const gold    = Color(0xFFB8892A);
-  static const cream   = Color(0xFFF5F0EA);
-  static const brown   = Color(0xFF7B4A2D);
-  static const purple  = Color(0xFF7C3AED);
+  static const gold    = AppPalette.gold;
+  static const cream   = AppPalette.surfaceMuted;
+  static const brown   = AppPalette.accent;
+  static const purple  = AppPalette.info;
 }
 
+/// Screen-local type aliases onto the design system. `display` was Bebas Neue;
+/// it now resolves to the app's Cormorant Garamond, scaled up here because a
+/// serif sets far larger than a condensed face at the same point size.
 class _T {
   static TextStyle display(double size,
           {Color color = _C.dark, double spacing = 0}) =>
-      GoogleFonts.bebasNeue(
-          fontSize: size, color: color, letterSpacing: spacing);
+      AppType.displayMedium.copyWith(
+        fontSize: size * 1.12,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle label(double size,
           {Color color = _C.dark,
           FontWeight fw = FontWeight.w600,
           double spacing = 0.5}) =>
-      GoogleFonts.jost(
-          fontSize: size,
-          fontWeight: fw,
-          color: color,
-          letterSpacing: spacing);
+      AppType.label.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle body(double size,
           {Color color = _C.grey700, FontWeight fw = FontWeight.w400}) =>
-      GoogleFonts.jost(fontSize: size, fontWeight: fw, color: color);
+      AppType.bodyMedium.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+      );
 
   static TextStyle mono(double size, {Color color = _C.dark}) =>
-      GoogleFonts.robotoMono(fontSize: size, color: color, fontWeight: FontWeight.w500);
+      AppType.mono.copyWith(fontSize: size, color: color);
 }
 
 // ─── MODELS ──────────────────────────────────────────────────────────────────
@@ -486,7 +501,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
 
           BoxShadow(
 
-            color: _C.dark.withOpacity(0.04),
+            color: _C.dark.withValues(alpha: 0.04),
 
             blurRadius: 12,
 
@@ -522,7 +537,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
 
                   decoration: BoxDecoration(
 
-                    color: _C.gold.withOpacity(0.12),
+                    color: _C.gold.withValues(alpha: 0.12),
 
                     shape: BoxShape.circle,
                   ),
@@ -613,7 +628,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
               color: _C.cream,
 
               border: Border.all(
-                color: _C.gold.withOpacity(0.15),
+                color: _C.gold.withValues(alpha: 0.15),
               ),
             ),
 
@@ -784,7 +799,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
                           color: statusColor,
                           border: Border.all(color: _C.white, width: 2),
                           boxShadow: [
-                            BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 4),
+                            BoxShadow(color: statusColor.withValues(alpha: 0.4), blurRadius: 4),
                           ],
                         ),
                       ),
@@ -857,8 +872,8 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 6, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: chipColor.withOpacity(0.12),
-                                        border: Border.all(color: chipColor.withOpacity(0.3)),
+                                        color: chipColor.withValues(alpha: 0.12),
+                                        border: Border.all(color: chipColor.withValues(alpha: 0.3)),
                                       ),
                                       child: Text(
                                         item.reason,
@@ -895,7 +910,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
             decoration: BoxDecoration(
               color: occ.hasGap ? _C.cream : _C.white,
               border: Border.all(
-                color: occ.hasGap ? _C.gold.withOpacity(0.5) : _C.grey150,
+                color: occ.hasGap ? _C.gold.withValues(alpha: 0.5) : _C.grey150,
               ),
             ),
             child: Column(
@@ -924,7 +939,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
                 if (occ.hasGap && occ.gapText != null)
                   Container(
                     width: double.infinity,
-                    color: _C.gold.withOpacity(0.1),
+                    color: _C.gold.withValues(alpha: 0.1),
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
                     child: Row(
                       children: [
@@ -961,7 +976,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: _C.gold.withOpacity(0.2),
+              color: _C.gold.withValues(alpha: 0.2),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -992,8 +1007,8 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: _C.white.withOpacity(0.06),
-                      border: Border.all(color: _C.white.withOpacity(0.1)),
+                      color: _C.white.withValues(alpha: 0.06),
+                      border: Border.all(color: _C.white.withValues(alpha: 0.1)),
                     ),
                     child: Text(
                       '"You have no formal evening wear. 3 outfits curated just for you."',
@@ -1068,7 +1083,7 @@ class _BrandSizeTile extends StatelessWidget {
         color: _C.white,
         boxShadow: [
           BoxShadow(
-            color: _C.dark.withOpacity(0.08),
+            color: _C.dark.withValues(alpha: 0.08),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -1174,8 +1189,8 @@ class _GapOutfitChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        border: Border.all(color: _C.gold.withOpacity(0.5)),
-        color: _C.gold.withOpacity(0.08),
+        border: Border.all(color: _C.gold.withValues(alpha: 0.5)),
+        color: _C.gold.withValues(alpha: 0.08),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

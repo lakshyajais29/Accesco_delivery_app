@@ -5,7 +5,7 @@ import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_setup_screen.dart';
-import 'theme/app_colors.dart';
+import 'theme/app_theme.dart';
 import 'screens/vibe_check_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -34,23 +34,15 @@ class AccescoApp extends StatelessWidget {
       title: 'Accesco',
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
-      // ── InstaStyle Dark Theme (Ch.03 Colour System) ────────────────────
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AppColors.backgroundBase,
-        colorScheme: const ColorScheme.dark(
-          surface: AppColors.surfaceCard,
-          primary: AppColors.brandWarmBrown,
-          secondary: AppColors.brandTan,
-          error: AppColors.fomoRed,
-          onPrimary: AppColors.ivoryWhite,
-          onSecondary: AppColors.backgroundBase,
-          onSurface: AppColors.ivoryWhite,
-        ),
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        splashFactory: NoSplash.splashFactory,
+      // ── InstaStyle editorial light theme ───────────────────────────────
+      // Every token — colour, type, radius, motion, component styling —
+      // comes from AppTheme so no screen needs to define its own.
+      theme: AppTheme.light,
+      // Clamp accessibility text scaling: the editorial layouts stay readable
+      // up to 1.3x, beyond which serif headlines start clipping their cards.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: child ?? const SizedBox.shrink(),
       ),
       // ── Named routes — onboarding → login → profile setup → home ──────────
       routes: {
@@ -64,12 +56,7 @@ class AccescoApp extends StatelessWidget {
         onComplete: () {
           // 1. Restore normal system UI (was immersive during splash)
           SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-          SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness: Brightness.light,
-            systemNavigationBarColor: AppColors.backgroundBase,
-            systemNavigationBarIconBrightness: Brightness.light,
-          ));
+          SystemChrome.setSystemUIOverlayStyle(AppTheme.lightOverlay);
 
           // 2. Replace splash with onboarding — uses navigatorKey since the
           //    callback's `context` is from MaterialApp.build (above the

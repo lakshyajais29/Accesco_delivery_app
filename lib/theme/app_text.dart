@@ -92,9 +92,9 @@ class AppText {
   static TextStyle priceOriginal({double size = 14}) => GoogleFonts.robotoMono(
         fontSize: size,
         fontWeight: FontWeight.w400,
-        color: AppColors.mutedText.withOpacity(0.45),
+        color: AppColors.mutedText.withValues(alpha: 0.45),
         decoration: TextDecoration.lineThrough,
-        decorationColor: AppColors.mutedText.withOpacity(0.45),
+        decorationColor: AppColors.mutedText.withValues(alpha: 0.45),
       );
 
   /// Current price — Montserrat Black.

@@ -5,43 +5,60 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../widgets/ds/ds.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/vibe_check_service.dart';
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
+/// Screen-local aliases onto the design system — see [AppPalette]. Names are
+/// the originals so the layout below is untouched; the values are what re-skin
+/// this screen. New colours belong in [AppPalette], not here.
 class _C {
-  static const white   = Color(0xFFFFFFFF);
-  static const bg      = Color(0xFFFFFFFF);
-  static const grey100 = Color(0xFFF5F5F5);
-  static const grey150 = Color(0xFFEEEEEE);
-  static const grey300 = Color(0xFFCCCCCC);
-  static const grey500 = Color(0xFF999999);
-  static const grey700 = Color(0xFF555555);
-  static const dark    = Color(0xFF0D0D0D);
-  static const magenta = Color(0xFFE91E8C);
-  static const sale    = Color(0xFFE53935);
-  static const amber   = Color(0xFFFF6F00);
-  static const purple  = Color(0xFF7C3AED);
+  static const white   = AppPalette.surface;
+  static const bg      = AppPalette.canvas;
+  static const grey100 = AppPalette.surfaceMuted;
+  static const grey150 = AppPalette.line;
+  static const grey300 = AppPalette.lineStrong;
+  static const grey500 = AppPalette.textTertiary;
+  static const grey700 = AppPalette.textSecondary;
+  static const dark    = AppPalette.ink;
+  static const magenta = AppPalette.accent;
+  static const sale    = AppPalette.danger;
+  static const amber   = AppPalette.warning;
+  static const purple  = AppPalette.info;
 }
 
+/// Screen-local type aliases onto the design system. `display` was Bebas Neue;
+/// it now resolves to the app's Cormorant Garamond, scaled up here because a
+/// serif sets far larger than a condensed face at the same point size.
 class _T {
   static TextStyle display(double size,
           {Color color = _C.dark, double spacing = 0}) =>
-      GoogleFonts.bebasNeue(
-          fontSize: size, color: color, letterSpacing: spacing);
+      AppType.displayMedium.copyWith(
+        fontSize: size * 1.12,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle label(double size,
           {Color color = _C.dark,
           FontWeight fw = FontWeight.w600,
           double spacing = 0.5}) =>
-      GoogleFonts.jost(
-          fontSize: size, fontWeight: fw, color: color, letterSpacing: spacing);
+      AppType.label.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle body(double size,
           {Color color = _C.grey700, FontWeight fw = FontWeight.w400}) =>
-      GoogleFonts.jost(fontSize: size, fontWeight: fw, color: color);
+      AppType.bodyMedium.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+      );
 }
 
 // ─── MODEL ───────────────────────────────────────────────────────────────────
@@ -327,7 +344,7 @@ class _VibeCheckScreenState extends State<VibeCheckScreen>
                 height: 3,
                 decoration: BoxDecoration(
                   color: done
-                      ? _C.magenta.withOpacity(0.4)
+                      ? _C.magenta.withValues(alpha: 0.4)
                       : active ? _C.magenta : _C.grey300,
                   borderRadius: BorderRadius.circular(2),
                 ),
@@ -528,7 +545,7 @@ class _Phase0FriendSelect extends StatelessWidget {
             width: 72, height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _C.magenta.withOpacity(0.08),
+              color: _C.magenta.withValues(alpha: 0.08),
             ),
             child: const Icon(Icons.group_add_outlined,
                 size: 34, color: _C.magenta),
@@ -616,7 +633,7 @@ class _Phase0FriendSelect extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           backgroundColor:
-                              f.color.withOpacity(isSelected ? 1.0 : 0.65),
+                              f.color.withValues(alpha: isSelected ? 1.0 : 0.65),
                           child: Text(f.initial,
                               style: _T.label(20, color: _C.white, spacing: 0)),
                         ),
@@ -795,7 +812,7 @@ class _ShareableCard extends StatelessWidget {
                 const Spacer(),
                 Text('VIBE CHECK',
                     style: _T.label(9,
-                        color: _C.white.withOpacity(0.85), spacing: 2)),
+                        color: _C.white.withValues(alpha: 0.85), spacing: 2)),
               ],
             ),
           ),
@@ -917,9 +934,9 @@ class _QuickShareRow extends StatelessWidget {
                 Container(
                   width: 56, height: 56,
                   decoration: BoxDecoration(
-                    color: app.color.withOpacity(0.12),
+                    color: app.color.withValues(alpha: 0.12),
                     border: Border.all(
-                        color: app.color.withOpacity(0.3), width: 1),
+                        color: app.color.withValues(alpha: 0.3), width: 1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(app.icon, color: app.color, size: 24),
@@ -1011,7 +1028,7 @@ class _ShareBottomCta extends StatelessWidget {
                       ? '← BACK TO FRIEND SELECT'
                       : 'SKIP → WAIT FOR REACTIONS',
                   style: _T.label(12,
-                      color: _C.white.withOpacity(0.7), spacing: 1),
+                      color: _C.white.withValues(alpha: 0.7), spacing: 1),
                 ),
               ),
             ),
@@ -1119,7 +1136,7 @@ class _Phase2NotificationPreviewState
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha: 0.12),
                               blurRadius: 20,
                               offset: const Offset(0, 6)),
                         ],
@@ -1411,7 +1428,7 @@ class _FriendReactionRow extends StatelessWidget {
               padding: const EdgeInsets.all(2),
               child: CircleAvatar(
                 backgroundColor:
-                    friend.color.withOpacity(reacted ? 1.0 : 0.5),
+                    friend.color.withValues(alpha: reacted ? 1.0 : 0.5),
                 child: Text(friend.initial,
                     style: _T.label(16, color: _C.white, spacing: 0)),
               ),
@@ -1737,7 +1754,7 @@ class _OutfitResultCard extends StatelessWidget {
                       width: 7, height: 7,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _C.sale.withOpacity(
+                        color: _C.sale.withValues(alpha: 
                             0.5 + 0.5 * pulseAnim.value),
                       ),
                     ),
@@ -1771,7 +1788,7 @@ class _FomoBanner extends StatelessWidget {
           color: _C.sale,
           boxShadow: [
             BoxShadow(
-              color: _C.sale.withOpacity(0.4 + 0.2 * pulseAnim.value),
+              color: _C.sale.withValues(alpha: 0.4 + 0.2 * pulseAnim.value),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -1793,7 +1810,7 @@ class _FomoBanner extends StatelessWidget {
                 ),
                 Text('Others are eyeing this right now.',
                     style: _T.body(11,
-                        color: _C.white.withOpacity(0.75))),
+                        color: _C.white.withValues(alpha: 0.75))),
               ],
             ),
           ),
@@ -1846,7 +1863,7 @@ class _Phase5CTA extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        _C.dark.withOpacity(0.9),
+                        _C.dark.withValues(alpha: 0.9),
                       ],
                       stops: const [0.3, 1.0],
                     ),
@@ -2078,7 +2095,7 @@ class _BottomCta extends StatelessWidget {
               const SizedBox(height: 2),
               Text(subLabel,
                   style: _T.body(11,
-                      color: _C.white.withOpacity(0.7))),
+                      color: _C.white.withValues(alpha: 0.7))),
             ],
           ),
         ),

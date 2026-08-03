@@ -18,62 +18,86 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/ds/ds.dart';
 import 'sku_catalog.dart';
 import 'sku_variant_picker.dart';
 
 // ─── THRIFT DESIGN TOKENS ────────────────────────────────────────────────────
+/// Screen-local aliases onto the design system — see [AppPalette].
+///
+/// This screen was the app's one dark surface, which left the thrift
+/// marketplace looking like a different product from everything around it.
+/// The names below are the originals so the layout is untouched; the values
+/// now resolve to the light editorial palette, and the paired background/text
+/// tokens (`co2Bg`/`co2Text`, `usedBg`/`usedTxt`, …) map onto the soft-wash
+/// and signal colours so each condition badge keeps its own meaning.
 class _TC {
-  static const bg          = Color(0xFF141008);
-  static const surface     = Color(0xFF1E170E);
-  static const cardBg      = Color(0xFF231A0E);
-  static const tan         = Color(0xFFC4913A);
-  static const tanLight    = Color(0xFFDDB96A);
-  static const tanDim      = Color(0xFF7A5828);
-  static const white       = Color(0xFFFFFFFF);
-  static const offWhite    = Color(0xFFF2E9D6);
-  static const grey400     = Color(0xFF9E8E78);
-  static const grey600     = Color(0xFF5A4A38);
-  static const co2Bg       = Color(0xFF162416);
-  static const co2Text     = Color(0xFF6DBF6D);
-  static const impactBg    = Color(0xFF1A1208);
-  static const impactText  = Color(0xFFCCA84E);
-  static const likeNewBg   = Color(0xFF162416);
-  static const likeNewTxt  = Color(0xFF7FC97F);
-  static const usedBg      = Color(0xFF2E2610);
-  static const usedTxt     = Color(0xFFCFAD4A);
-  static const vintageBg   = Color(0xFF301A08);
-  static const vintageTxt  = Color(0xFFCF8044);
-  static const fomoRed     = Color(0xFFC0392B);
-  static const fomoRedBg   = Color(0xFF2A0A08);
-  static const newDropBg   = Color(0xFF2A1A04);
-  static const newDropText = Color(0xFFFFB347);
-  // SKU colours (dark-theme variant — consistent with SwipeStyle dark overlay)
-  static const skuText     = Color(0xFF888888);
-  static const skuBorder   = Color(0xFF3A2E00);
-  static const skuBg       = Color(0xFF1E170E);
+  static const bg          = AppPalette.canvas;
+  static const surface     = AppPalette.surface;
+  static const cardBg      = AppPalette.surfaceMuted;
+  static const tan         = AppPalette.accent;
+  static const tanLight    = AppPalette.gold;
+  static const tanDim      = AppPalette.textTertiary;
+  static const white       = AppPalette.textOnDark;
+  static const offWhite    = AppPalette.textPrimary;
+  static const grey400     = AppPalette.textSecondary;
+  static const grey600     = AppPalette.lineStrong;
+  static const co2Bg       = AppPalette.successSoft;
+  static const co2Text     = AppPalette.success;
+  static const impactBg    = AppPalette.warningSoft;
+  static const impactText  = AppPalette.warning;
+  static const likeNewBg   = AppPalette.successSoft;
+  static const likeNewTxt  = AppPalette.success;
+  static const usedBg      = AppPalette.warningSoft;
+  static const usedTxt     = AppPalette.warning;
+  static const vintageBg   = AppPalette.accentSoft;
+  static const vintageTxt  = AppPalette.accentDeep;
+  static const fomoRed     = AppPalette.danger;
+  static const fomoRedBg   = AppPalette.dangerSoft;
+  static const newDropBg   = AppPalette.accentSoft;
+  static const newDropText = AppPalette.accentDeep;
+  static const skuText     = AppPalette.textTertiary;
+  static const skuBorder   = AppPalette.line;
+  static const skuBg       = AppPalette.surfaceMuted;
 }
 
 // ─── TEXT STYLES ─────────────────────────────────────────────────────────────
+// `_display` was Bebas Neue; it now resolves to the app's Cormorant Garamond,
+// scaled up because a serif sets far larger than a condensed face at the same
+// point size.
 TextStyle _display(double size,
         {Color color = _TC.offWhite, double spacing = 0}) =>
-    GoogleFonts.bebasNeue(fontSize: size, color: color, letterSpacing: spacing);
+    AppType.displayMedium.copyWith(
+      fontSize: size * 1.12,
+      color: color,
+      letterSpacing: spacing,
+    );
 
 TextStyle _label(double size,
         {Color color = _TC.offWhite,
         FontWeight fw = FontWeight.w600,
         double spacing = 0.5}) =>
-    GoogleFonts.jost(fontSize: size, fontWeight: fw, color: color, letterSpacing: spacing);
+    AppType.label.copyWith(
+      fontSize: size,
+      fontWeight: fw,
+      color: color,
+      letterSpacing: spacing,
+    );
 
 TextStyle _body(double size,
         {Color color = _TC.grey400, FontWeight fw = FontWeight.w400}) =>
-    GoogleFonts.jost(fontSize: size, fontWeight: fw, color: color);
+    AppType.bodyMedium.copyWith(fontSize: size, fontWeight: fw, color: color);
 
 TextStyle _mono(double size,
         {Color color = _TC.grey400,
         TextDecoration? decoration,
         FontWeight fw = FontWeight.w400}) =>
-    GoogleFonts.robotoMono(
-        fontSize: size, color: color, fontWeight: fw, decoration: decoration);
+    AppType.mono.copyWith(
+      fontSize: size,
+      color: color,
+      fontWeight: fw,
+      decoration: decoration,
+    );
 
 TextStyle _skuMono(double size) =>
     GoogleFonts.robotoMono(
@@ -943,7 +967,7 @@ class _ThriftCardState extends State<_ThriftCard> with TickerProviderStateMixin 
           borderRadius: BorderRadius.circular(6),
           // Subtle new-drop glow border — kept because it's editorial, not clutter
           border: p.isNewDrop
-              ? Border.all(color: _TC.newDropText.withOpacity(0.35), width: 1.0)
+              ? Border.all(color: _TC.newDropText.withValues(alpha: 0.35), width: 1.0)
               : Border.all(color: _TC.surface, width: 0.5),
         ),
         clipBehavior: Clip.hardEdge,
@@ -966,7 +990,7 @@ class _ThriftCardState extends State<_ThriftCard> with TickerProviderStateMixin 
                 child: Container(
                   width: 30, height: 30,
                   decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                      color: Colors.black.withValues(alpha: 0.4), shape: BoxShape.circle),
                   child: Center(child: Icon(
                       widget.wished ? Icons.favorite : Icons.favorite_border,
                       size: 16, color: widget.wished ? _TC.tan : _TC.white))))),
@@ -1101,7 +1125,7 @@ class _ThriftVariantCue extends StatelessWidget {
     if (parent == null) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(20)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         ...parent.colors.take(3).map((c) {
           final hex = c.hex.replaceFirst('#', '');
@@ -1110,7 +1134,7 @@ class _ThriftVariantCue extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Color(int.parse('FF$hex', radix: 16)),
-              border: Border.all(color: Colors.white.withOpacity(0.4), width: 0.5),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 0.5),
             ),
           );
         }),
@@ -1129,7 +1153,7 @@ class _StockCounter extends StatelessWidget {
     builder: (_, __) => Opacity(opacity: pulseAnim.value, child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(color: _TC.fomoRedBg, borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: _TC.fomoRed.withOpacity(0.5), width: 0.5)),
+          border: Border.all(color: _TC.fomoRed.withValues(alpha: 0.5), width: 0.5)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 5, height: 5, decoration: const BoxDecoration(color: _TC.fomoRed, shape: BoxShape.circle)),
         const SizedBox(width: 5),
@@ -1159,15 +1183,15 @@ class _NewDropBadge extends StatelessWidget {
     builder: (_, __) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(color: _TC.newDropBg, borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: _TC.newDropText.withOpacity(0.6), width: 0.8),
-          boxShadow: [BoxShadow(color: _TC.newDropText.withOpacity(0.25), blurRadius: 6)]),
+          border: Border.all(color: _TC.newDropText.withValues(alpha: 0.6), width: 0.8),
+          boxShadow: [BoxShadow(color: _TC.newDropText.withValues(alpha: 0.25), blurRadius: 6)]),
       child: Stack(children: [
         Text('NEW', style: GoogleFonts.montserrat(fontSize: 9, fontWeight: FontWeight.w900,
             color: _TC.newDropText, letterSpacing: 1.0)),
         Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(4),
           child: Transform.translate(offset: Offset(shimmerAnim.value * 30, 0),
             child: Container(width: 12, decoration: BoxDecoration(gradient: LinearGradient(
-                colors: [Colors.transparent, _TC.newDropText.withOpacity(0.4), Colors.transparent])))))),
+                colors: [Colors.transparent, _TC.newDropText.withValues(alpha: 0.4), Colors.transparent])))))),
       ]),
     ),
   );
@@ -1178,8 +1202,8 @@ class _TrendingBadge extends StatelessWidget {
   final String category; const _TrendingBadge({required this.category});
   @override Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(color: Colors.black.withOpacity(0.65), borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _TC.tan.withOpacity(0.5), width: 0.8)),
+    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _TC.tan.withValues(alpha: 0.5), width: 0.8)),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       const Text('👑', style: TextStyle(fontSize: 9)),
       const SizedBox(width: 4),
@@ -1195,7 +1219,7 @@ class _CO2Chip extends StatelessWidget {
   @override Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
     decoration: BoxDecoration(color: _TC.co2Bg, borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: _TC.co2Text.withOpacity(0.25), width: 0.5)),
+        border: Border.all(color: _TC.co2Text.withValues(alpha: 0.25), width: 0.5)),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       const Icon(Icons.eco, size: 11, color: _TC.co2Text),
       const SizedBox(width: 4),

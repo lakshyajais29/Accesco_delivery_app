@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../widgets/ds/ds.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../services/tracking_service.dart';
 import '../theme/map_style.dart';
@@ -63,23 +63,29 @@ CartPayload _skuPayloadFor({
 }
 
 // ─── DESIGN TOKENS (exact match HomeScreen) ──────────────────────────────────
+/// Screen-local aliases onto the design system — see [AppPalette]. Names are
+/// the originals so the layout below is untouched; the values are what re-skin
+/// this screen. New colours belong in [AppPalette], not here.
 class _C {
-  static const white   = Color(0xFFFFFFFF);
-  static const bg      = Color(0xFFFFFFFF);
-  static const grey100 = Color(0xFFF5F5F5);
-  static const grey150 = Color(0xFFEEEEEE);
-  static const grey300 = Color(0xFFCCCCCC);
-  static const grey500 = Color(0xFF999999);
-  static const grey700 = Color(0xFF555555);
-  static const dark    = Color(0xFF0D0D0D);
-  static const magenta = Color(0xFFE91E8C);
-  static const amber   = Color(0xFFFF8F00);
-  static const sale    = Color(0xFFE53935);
-  static const green   = Color(0xFF4CAF50);
-  static const brandBrown = Color(0xFF8B7536);
-  static const brandTan   = Color(0xFFC8A97E);
-  static const fomoFlash  = Color(0xFFC0392B);
-  // Map palette
+  static const white      = AppPalette.surface;
+  static const bg         = AppPalette.canvas;
+  static const grey100    = AppPalette.surfaceMuted;
+  static const grey150    = AppPalette.line;
+  static const grey300    = AppPalette.lineStrong;
+  static const grey500    = AppPalette.textTertiary;
+  static const grey700    = AppPalette.textSecondary;
+  static const dark       = AppPalette.ink;
+  static const magenta    = AppPalette.accent;
+  static const amber      = AppPalette.warning;
+  static const sale       = AppPalette.danger;
+  static const green      = AppPalette.success;
+  static const brandBrown = AppPalette.accent;
+  static const brandTan   = AppPalette.gold;
+  static const fomoFlash  = AppPalette.danger;
+
+  // Map palette — the live-tracking map stays dark by design. A dark map is
+  // the convention riders and couriers expect, and it makes the route and
+  // marker overlays legible in a way an ivory map cannot.
   static const mapBg   = Color(0xFF12122A);
   static const mapRoad = Color(0xFF8B7536);
   static const mapGrid = Color(0xFF1E1E3A);
@@ -95,31 +101,49 @@ const Curve _kTrail      = Cubic(0.25, 0.46, 0.45, 0.94);
 // S-curve for logo wave cubic-bezier(0.37, 0.0, 0.63, 1)
 const Curve _kSCurve     = Cubic(0.37, 0.0, 0.63, 1);
 
+/// Screen-local type aliases onto the design system. `display` was Bebas Neue;
+/// it now resolves to the app's Cormorant Garamond, scaled up here because a
+/// serif sets far larger than a condensed face at the same point size.
 class _T {
   static TextStyle display(double size,
           {Color color = _C.dark, double spacing = 0}) =>
-      GoogleFonts.bebasNeue(
-          fontSize: size, color: color, letterSpacing: spacing);
+      AppType.displayMedium.copyWith(
+        fontSize: size * 1.12,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle label(double size,
           {Color color = _C.dark,
           FontWeight fw = FontWeight.w600,
           double spacing = 0.5}) =>
-      GoogleFonts.jost(
-          fontSize: size, fontWeight: fw, color: color, letterSpacing: spacing);
+      AppType.label.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle body(double size,
           {Color color = _C.grey700, FontWeight fw = FontWeight.w400}) =>
-      GoogleFonts.jost(fontSize: size, fontWeight: fw, color: color);
+      AppType.bodyMedium.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+      );
 
   static TextStyle mono(double size,
           {Color color = _C.dark, FontWeight fw = FontWeight.w700}) =>
-      GoogleFonts.robotoMono(fontSize: size, fontWeight: fw, color: color);
+      AppType.mono.copyWith(fontSize: size, fontWeight: fw, color: color);
 
   static TextStyle serif(double size,
           {Color color = _C.white, FontWeight fw = FontWeight.w600}) =>
-      GoogleFonts.cormorantGaramond(
-          fontSize: size, fontWeight: fw, color: color, height: 1.1);
+      AppType.displaySmall.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+        height: 1.1,
+      );
 }
 
 // ─── PHASE ───────────────────────────────────────────────────────────────────
@@ -762,7 +786,7 @@ Future<void> _syncTimerWithServer() async {
                           radius: 1.0,
                           colors: [
                             const Color(0xFFFF8C00)
-                                .withOpacity(0.22 + _glowCtrl.value * 0.12),
+                                .withValues(alpha: 0.22 + _glowCtrl.value * 0.12),
                             Colors.transparent,
                           ],
                         ),
@@ -867,7 +891,7 @@ Future<void> _syncTimerWithServer() async {
                                   if (_fomoFlashing[i])
                                     Positioned.fill(
                                       child: Container(
-                                        color: _C.fomoFlash.withOpacity(0.45),
+                                        color: _C.fomoFlash.withValues(alpha: 0.45),
                                       ),
                                     ),
                                 ],
@@ -1218,7 +1242,7 @@ Future<void> _syncTimerWithServer() async {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 400),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                color: rc.withOpacity(0.12),
+                color: rc.withValues(alpha: 0.12),
                 child: Text(
                   _trialSecs <= 2 * 60 ? 'URGENT!' :
                   _trialSecs <= 5 * 60 ? 'HURRY UP' : 'ACTIVE',
@@ -1251,7 +1275,7 @@ Future<void> _syncTimerWithServer() async {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: _C.sale.withOpacity(0.18),
+                                color: _C.sale.withValues(alpha: 0.18),
                                 blurRadius: 30, spreadRadius: 10,
                               ),
                             ],
@@ -1365,10 +1389,10 @@ Future<void> _syncTimerWithServer() async {
         Container(
           decoration: BoxDecoration(
             color: _C.white,
-            border: Border(top: BorderSide(color: _C.grey150.withOpacity(0.8))),
+            border: Border(top: BorderSide(color: _C.grey150.withValues(alpha: 0.8))),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 20, offset: const Offset(0, -5),
               )
             ],
@@ -1485,7 +1509,7 @@ Future<void> _syncTimerWithServer() async {
                       color: borderColor, width: item.kept != null ? 2 : 1),
                   boxShadow: item.kept == true
                       ? [BoxShadow(
-                          color: _C.magenta.withOpacity(0.12),
+                          color: _C.magenta.withValues(alpha: 0.12),
                           blurRadius: 12, offset: const Offset(0, 4))]
                       : [],
                 ),
@@ -1511,7 +1535,7 @@ Future<void> _syncTimerWithServer() async {
                           Positioned.fill(
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 150),
-                              color: _C.fomoFlash.withOpacity(0.4),
+                              color: _C.fomoFlash.withValues(alpha: 0.4),
                             ),
                           ),
                         // Wishlist heart icon
@@ -1710,7 +1734,7 @@ class _EtaPulseDotState extends State<_EtaPulseDot> with SingleTickerProviderSta
             color: _C.green,
             boxShadow: [
               BoxShadow(
-                color: _C.green.withOpacity(0.5 * (_scaleAnim.value - 1.0) / 0.4),
+                color: _C.green.withValues(alpha: 0.5 * (_scaleAnim.value - 1.0) / 0.4),
                 blurRadius: 8, spreadRadius: 3,
               ),
             ],
@@ -1750,7 +1774,7 @@ class _FabricWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = _C.white.withOpacity(0.65)
+      ..color = _C.white.withValues(alpha: 0.65)
       ..strokeWidth = 2.2
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -1792,7 +1816,7 @@ class _DarkMapPainter extends CustomPainter {
     for (double x = 0; x <= w; x += 38) canvas.drawLine(Offset(x, 0), Offset(x, h), grid);
     for (double y = 0; y <= h; y += 38) canvas.drawLine(Offset(0, y), Offset(w, y), grid);
 
-    final road = Paint()..color = _C.mapRoad.withOpacity(0.55)..strokeWidth = 7;
+    final road = Paint()..color = _C.mapRoad.withValues(alpha: 0.55)..strokeWidth = 7;
     canvas.drawLine(Offset(0, h * 0.38), Offset(w, h * 0.38), road);
     canvas.drawLine(Offset(w * 0.48, 0), Offset(w * 0.48, h), road);
     canvas.drawLine(Offset(0, h * 0.66), Offset(w * 0.72, h * 0.66), road);
@@ -1819,12 +1843,12 @@ class _DarkMapPainter extends CustomPainter {
 
     // Pulse ring (ETA pulse spec: scale effect)
     canvas.drawCircle(Offset(rx, ry), 16 + dotPulse * 6,
-        Paint()..color = _C.magenta.withOpacity(0.22 * (1 - dotPulse)));
+        Paint()..color = _C.magenta.withValues(alpha: 0.22 * (1 - dotPulse)));
     canvas.drawCircle(Offset(rx, ry), 10, Paint()..color = _C.magenta);
     canvas.drawCircle(Offset(rx, ry), 5,  Paint()..color = _C.white);
 
     final routePaint = Paint()
-      ..color = _C.magenta.withOpacity(0.4)
+      ..color = _C.magenta.withValues(alpha: 0.4)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final routePath = Path()
@@ -1925,7 +1949,7 @@ class _GrainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rng   = Random((seed * 1000).toInt());
-    final paint = Paint()..color = Colors.white.withOpacity(0.025);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.025);
     for (int i = 0; i < 280; i++) {
       canvas.drawCircle(
         Offset(rng.nextDouble() * size.width, rng.nextDouble() * size.height),

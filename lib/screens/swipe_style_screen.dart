@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/ds/ds.dart';
 import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
 import 'package:instastyle/services/cart_service.dart';
 import 'virtual_try_on_screen.dart';
@@ -60,53 +61,76 @@ CartPayload _skuPayloadFor({
 }
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+/// Screen-local aliases onto the design system.
+///
+/// The names are the originals so the layout code below is untouched, but each
+/// now resolves to an [AppPalette] token — which is what re-skins this screen
+/// to the editorial language in one place. Add nothing new here: new colours
+/// belong in [AppPalette].
 class _C {
-  static const white       = Color(0xFFFFFFFF);
-  static const bg          = Color(0xFFFFFFFF);
-  static const cardBg      = Color(0xFFF2F2F2);
-  static const grey100     = Color(0xFFF5F5F5);
-  static const grey150     = Color(0xFFEEEEEE);
-  static const grey300     = Color(0xFFCCCCCC);
-  static const grey500     = Color(0xFF999999);
-  static const grey700     = Color(0xFF555555);
-  static const dark        = Color(0xFF0D0D0D);
-  static const magenta     = Color(0xFFE91E8C);
-  static const sale        = Color(0xFFE53935);
-  static const amber       = Color(0xFFFF6F00);
-  static const ivory       = Color(0xFFF5F0E8);
-  static const brown       = Color(0xFF8B6914);
-  static const brownDark   = Color(0xFF3A2E00);
-  static const greenBudget = Color(0xFF2E7D32);
-  static const navBg       = Color(0xFF111111);
+  static const white       = AppPalette.surface;
+  static const bg          = AppPalette.canvas;
+  static const cardBg      = AppPalette.surfaceMuted;
+  static const grey100     = AppPalette.surfaceMuted;
+  static const grey150     = AppPalette.line;
+  static const grey300     = AppPalette.lineStrong;
+  static const grey500     = AppPalette.textTertiary;
+  static const grey700     = AppPalette.textSecondary;
+  static const dark        = AppPalette.ink;
+  static const magenta     = AppPalette.accent;
+  static const sale        = AppPalette.danger;
+  static const amber       = AppPalette.warning;
+  static const ivory       = AppPalette.textOnDark;
+  static const brown       = AppPalette.accent;
+  static const brownDark   = AppPalette.accentDeep;
+  static const greenBudget = AppPalette.success;
+  static const navBg       = AppPalette.ink;
 
-  // ── FOMO palette (Ch. 15) ──────────────────────────────────────────────
-  static const fomoRed     = Color(0xFFC0392B); // Stock Counter, Price Scarcity
-  static const brandTan    = Color(0xFFC4913A); // Recency Signal, Trending Badge
+  static const fomoRed     = AppPalette.danger;
+  static const brandTan    = AppPalette.gold;
 }
 
+/// Screen-local type aliases onto the design system.
+///
+/// `display` used to be Bebas Neue — a condensed poster face at odds with the
+/// editorial direction. It now resolves to the same Cormorant Garamond used
+/// for every headline in the app. Bebas renders far more compactly than a
+/// serif at the same point size, so the sizes passed by the layout code below
+/// are scaled up here rather than being edited at ~40 call sites.
 class _T {
   static TextStyle display(double size,
           {Color color = _C.dark, double spacing = 0}) =>
-      GoogleFonts.bebasNeue(
-          fontSize: size, color: color, letterSpacing: spacing);
+      AppType.displayMedium.copyWith(
+        fontSize: size * 1.12,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle label(double size,
           {Color color = _C.dark,
           FontWeight fw = FontWeight.w600,
           double spacing = 0.5}) =>
-      GoogleFonts.jost(
-          fontSize: size, fontWeight: fw, color: color, letterSpacing: spacing);
+      AppType.label.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+        letterSpacing: spacing,
+      );
 
   static TextStyle body(double size,
           {Color color = _C.grey700, FontWeight fw = FontWeight.w400}) =>
-      GoogleFonts.jost(fontSize: size, fontWeight: fw, color: color);
+      AppType.bodyMedium.copyWith(
+        fontSize: size,
+        fontWeight: fw,
+        color: color,
+      );
 
   static TextStyle brandName(double size, {Color color = _C.ivory}) =>
-      GoogleFonts.cormorantGaramond(
-          fontSize: size,
-          fontWeight: FontWeight.w700,
-          color: color,
-          letterSpacing: 0.5);
+      AppType.displaySmall.copyWith(
+        fontSize: size,
+        color: color,
+        letterSpacing: 0.5,
+      );
 }
 
 // ─── MODEL ────────────────────────────────────────────────────────────────────
@@ -683,7 +707,7 @@ Widget build(BuildContext context) {
 
                                     colors: [
                                       Colors.white
-                                          .withOpacity(0.10),
+                                          .withValues(alpha: 0.10),
 
                                       Colors.transparent,
                                     ],
@@ -784,7 +808,7 @@ Widget build(BuildContext context) {
                   Container(
                     width: 38, height: 38,
                     decoration: BoxDecoration(
-                      color: _C.white.withOpacity(0.12),
+                      color: _C.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.shopping_bag_outlined,
@@ -817,7 +841,7 @@ Widget build(BuildContext context) {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _C.white.withOpacity(0.15),
+                    color: _C.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text('$current / $total',
@@ -916,12 +940,12 @@ Widget build(BuildContext context) {
 
                 decoration: BoxDecoration(
 
-                  color: _C.white.withOpacity(0.10),
+                  color: _C.white.withValues(alpha: 0.10),
 
                   borderRadius: BorderRadius.circular(2),
 
                   border: Border.all(
-                    color: _C.white.withOpacity(0.28),
+                    color: _C.white.withValues(alpha: 0.28),
                     width: 1,
                   ),
                 ),
@@ -937,7 +961,7 @@ Widget build(BuildContext context) {
 
                       size: 14,
 
-                      color: _C.white.withOpacity(0.85),
+                      color: _C.white.withValues(alpha: 0.85),
                     ),
 
                     const SizedBox(width: 8),
@@ -951,7 +975,7 @@ Widget build(BuildContext context) {
                         11,
 
                         color:
-                            _C.white.withOpacity(0.85),
+                            _C.white.withValues(alpha: 0.85),
 
                         spacing: 1.5,
                       ),
@@ -1494,8 +1518,8 @@ class _OutfitCardState extends State<_OutfitCard>
                         end:   Alignment(_shimmer.value + 0.6,  0.5),
                         colors: [
                           Colors.transparent,
-                          Colors.white.withOpacity(0.13),
-                          Colors.white.withOpacity(0.06),
+                          Colors.white.withValues(alpha: 0.13),
+                          Colors.white.withValues(alpha: 0.06),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 0.45, 0.55, 1.0],
@@ -1518,7 +1542,7 @@ class _OutfitCardState extends State<_OutfitCard>
               Text(outfit.brand, style: _T.brandName(26, color: _C.ivory)),
               const SizedBox(height: 2),
               Text(outfit.style,
-                  style: _T.body(13, color: _C.ivory.withOpacity(0.80)),
+                  style: _T.body(13, color: _C.ivory.withValues(alpha: 0.80)),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 8),
 
@@ -1551,9 +1575,9 @@ class _OutfitCardState extends State<_OutfitCard>
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _C.white.withOpacity(0.12),
+                    color: _C.white.withValues(alpha: 0.12),
                     border: Border.all(
-                        color: _C.white.withOpacity(0.22), width: 1),
+                        color: _C.white.withValues(alpha: 0.22), width: 1),
                   ),
                   child: Text(tag,
                       style: GoogleFonts.montserrat(
@@ -1685,7 +1709,7 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
   // ── 2. Social Proof ───────────────────────────────────────────────────────
   Widget _socialProof(int viewers) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    color: Colors.white.withOpacity(0.09),
+    color: Colors.white.withValues(alpha: 0.09),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1705,7 +1729,7 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
   // ── 3. Recency Signal ─────────────────────────────────────────────────────
   Widget _recencySignal(int orders) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    color: _C.brandTan.withOpacity(0.18),
+    color: _C.brandTan.withValues(alpha: 0.18),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1727,11 +1751,11 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
   Widget _newDropSignal(int minsAgo) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
     decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.07),
-      border: Border.all(color: Colors.white.withOpacity(0.28), width: 1),
+      color: Colors.white.withValues(alpha: 0.07),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.28), width: 1),
       boxShadow: [
         BoxShadow(
-          color: Colors.white.withOpacity(0.10),
+          color: Colors.white.withValues(alpha: 0.10),
           blurRadius: 10, spreadRadius: 0,
         ),
       ],
@@ -1766,9 +1790,9 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
   Widget _trendingSignal(String label) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
-      color: _C.brandTan.withOpacity(0.14),
+      color: _C.brandTan.withValues(alpha: 0.14),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: _C.brandTan.withOpacity(0.40), width: 1),
+      border: Border.all(color: _C.brandTan.withValues(alpha: 0.40), width: 1),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -1798,9 +1822,7 @@ class _HintStamp extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
     decoration: BoxDecoration(border: Border.all(color: color, width: 3)),
-    child: Text(label,
-        style: GoogleFonts.bebasNeue(
-            fontSize: 34, color: color, letterSpacing: 1)),
+    child: Text(label, style: _T.display(30, color: color, spacing: 1)),
   );
 }
 
@@ -1865,14 +1887,14 @@ class _ActionBtnState extends State<_ActionBtn>
                   shape: BoxShape.circle,
                   color: widget.primary
                       ? _C.magenta
-                      : _C.white.withOpacity(0.07),
+                      : _C.white.withValues(alpha: 0.07),
                   border: widget.primary
                       ? null
                       : Border.all(
-                          color: _C.white.withOpacity(0.14), width: 1.5),
+                          color: _C.white.withValues(alpha: 0.14), width: 1.5),
                   boxShadow: widget.primary
                       ? [BoxShadow(
-                          color: _C.magenta.withOpacity(0.50),
+                          color: _C.magenta.withValues(alpha: 0.50),
                           blurRadius: 22, spreadRadius: 2)]
                       : null,
                 ),
