@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Firebase Storage rules for InstaStyle.
+//
+// Deploy with:  firebase deploy --only storage
+//
+// Without these, the default rules deny all client access and every listing
+// upload fails with `unauthorized` — which ImageUploadService surfaces as
+// "You don't have permission to upload."
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Thrift listing photography ──────────────────────────────────────
+    // Path: thrift_listings/{sellerId}/{batchId}/{index}.jpg
+    match /thrift_listings/{sellerId}/{batchId}/{fileName} {
+
+      // Listings are public once live, so buyers must be able to read the
+      // images without authenticating.
+      allow read: if true;
+
+      // Only the signed-in owner may write into their own folder. This is
+      // what stops one seller overwriting another's photos — the client
+      // chooses the path, so it cannot be trusted on its own.
+      allow write: if request.auth != null
+                   && request.auth.uid == sellerId
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      // Sellers may remove their own photos — this is what makes the
+      // rollback in ImageUploadService work when an upload fails part-way.
+      allow delete: if request.auth != null && request.auth.uid == sellerId;
+    }
+
+    // Everything else stays closed until it has a rule of its own.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

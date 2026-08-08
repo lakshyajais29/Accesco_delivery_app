@@ -10,16 +10,77 @@ import 'sku_variant_picker.dart';
 import 'virtual_try_on_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  PRODUCT DETAIL
+//  PRODUCT DETAIL — a translation of Figma node 490:944 ("Item").
 //
-//  A full-bleed hero photograph the content sheet scrolls up over, then the
-//  editorial detail: brand, name, price, urgency signals, description and a
-//  rail of related pieces. A sticky action bar carries try-on and add-to-bag.
+//  Structure, top to bottom, matching the design:
+//    1. Gallery      — hero photo with side peeks, index pill, thumbnail strip
+//    2. Identity     — brand (serif), name (serif), price / strike / % off
+//    3. Provenance   — condition grade chip + verified-item mark
+//    4. Seller       — avatar, name, rating, verified seller, chevron
+//    5. Attributes   — Size · Color · Condition · Brand
+//    6. Assurance    — delivery ETA and try-&-return window
+//    7. Action bar   — wishlist square + brown "Add to Cart"
 //
-//  Behaviour preserved from the original: hero flight from the originating
-//  card, variant picker → CartService.addItem, wishlist toggle, virtual try-on
-//  navigation, and CatalogService.getSimilarProducts for the rail.
+//  Behaviour is unchanged from the previous implementation: variant picker →
+//  CartService.addItem, wishlist toggle, virtual try-on, and similar products
+//  from CatalogService.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Figma measurements for this screen, kept together so the layout can be
+/// checked against the design without reading the whole tree.
+class _Spec {
+  const _Spec._();
+
+  // Gallery — nodes 490:983–988
+  static const double heroHeight = 229;
+  static const double heroSidePeek = 24;
+  static const double indexPillRadius = 10;
+
+  // Thumbnails — nodes 490:955–960
+  static const double thumbHeight = 67;
+  static const double thumbWidth = 58;
+  static const double thumbRadius = 5;
+
+  // Cards — nodes 490:964, 490:965
+  static const double cardRadius = 5;
+  static const double sellerCardHeight = 49;
+  static const double assuranceCardHeight = 79;
+
+  // Action bar — nodes 490:961, 490:963
+  static const double ctaHeight = 47;
+  static const double ctaRadius = 5;
+  static const double wishlistWidth = 48;
+}
+
+/// Figma palette for this screen. The browns already exist in [AppPalette];
+/// the near-neutral card borders and muted greys are specific to this design.
+class _Ink {
+  const _Ink._();
+
+  /// Card hairline. Figma `#f0f1f1`.
+  static const Color cardBorder = Color(0xFFF0F1F1);
+
+  /// Assurance card wash. Figma `#f9f6fc`.
+  static const Color assuranceFill = Color(0xFFF9F6FC);
+
+  /// Struck-through original price. Figma `#726767`.
+  static const Color priceStrike = Color(0xFF726767);
+
+  /// Fine print under the assurance rows. Figma `#8f8686`.
+  static const Color finePrint = Color(0xFF8F8686);
+
+  /// Gallery side peeks. Figma `#cdc1b7` / `#e1d9d2`.
+  static const Color peekLeft = Color(0xFFCDC1B7);
+  static const Color peekRight = Color(0xFFE1D9D2);
+
+  /// Index pill. Figma `#6c6b6a`.
+  static const Color indexPill = Color(0xFF6C6B6A);
+
+  /// Brand brown used for the CTA, grade chip and verification marks.
+  /// Figma `#5d3b22` — matches [AppPalette.accentDeep] (`#5C3D22`) to within
+  /// one unit, so the token is used rather than a second near-identical hex.
+  static const Color brand = AppPalette.accentDeep;
+}
 
 class ProductDetailScreen extends StatefulWidget {
   final ParentProduct product;
@@ -32,6 +93,7 @@ class ProductDetailScreen extends StatefulWidget {
         pageBuilder: (_, __, ___) =>
             ProductDetailScreen(product: product, heroTag: heroTag),
         transitionDuration: AppMotion.slow,
+        reverseTransitionDuration: AppMotion.normal,
         transitionsBuilder: (_, animation, __, child) => FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: AppMotion.enter),
           child: child,
@@ -43,37 +105,33 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  final _scrollController = ScrollController();
-
-  /// Drives the app bar's fade from transparent-over-photo to solid canvas.
-  final _scrolledPastHero = ValueNotifier<bool>(false);
-
-  late final List<ParentProduct> _similar;
+  final _galleryController = PageController();
+  int _galleryIndex = 0;
   bool _isAddingToCart = false;
 
-  double get _heroHeight =>
-      (MediaQuery.sizeOf(context).height * 0.52).clamp(280.0, 560.0);
+  late final List<ParentProduct> _similar;
+
+  /// Gallery sources. The catalogue carries one image per product plus one per
+  /// variant, so variant art is folded in to build the strip the design shows.
+  late final List<String> _images;
 
   @override
   void initState() {
     super.initState();
     _similar = CatalogService.getSimilarProducts(widget.product);
-    _scrollController.addListener(_onScroll);
+
+    final seen = <String>{widget.product.defaultImageUrl};
+    for (final variant in widget.product.variantMap.values) {
+      final url = variant.imageUrl;
+      if (url != null && url.isNotEmpty) seen.add(url);
+    }
+    _images = seen.toList(growable: false);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    _scrolledPastHero.dispose();
+    _galleryController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    // A ValueNotifier rather than setState: the app bar is the only thing that
-    // depends on scroll position, so the rest of the page never rebuilds.
-    final past = _scrollController.offset > _heroHeight - 120;
-    if (past != _scrolledPastHero.value) _scrolledPastHero.value = past;
   }
 
   void _openVariantPicker() {
@@ -93,9 +151,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         context,
         '${payload.productName} · ${payload.size} added to bag',
       );
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      // Most often this is the "not signed in" StateError from CartService.
+      // Most often the "not signed in" StateError from CartService.
       AppSnack.error(context, 'Could not add to bag. Please sign in first.');
     } finally {
       if (mounted) setState(() => _isAddingToCart = false);
@@ -103,15 +161,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _toggleWishlist() {
-    final wasWishlisted =
-        WishlistService.instance.containsId(widget.product.id);
+    final wasSaved = WishlistService.instance.containsId(widget.product.id);
     WishlistService.instance.toggle(widget.product);
     AppSnack.show(
       context,
-      wasWishlisted
+      wasSaved
           ? '${widget.product.name} removed from wishlist'
           : '${widget.product.name} saved to wishlist',
-      icon: wasWishlisted ? Icons.heart_broken_outlined : Icons.favorite,
+      icon: wasSaved ? Icons.heart_broken_outlined : Icons.favorite,
     );
   }
 
@@ -119,221 +176,236 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final product = widget.product;
     final inset = AppSpacing.page(context);
-    final heroHeight = _heroHeight;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: AppTheme.darkOverlay,
+      value: AppTheme.lightOverlay,
       child: Scaffold(
-        backgroundColor: AppPalette.canvas,
-        body: Stack(
-          children: [
-            // ── Hero photograph, pinned behind the sheet ─────────────────
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: heroHeight,
-              child: Hero(
-                tag: widget.heroTag ?? product.id,
-                child: AppImage(url: product.defaultImageUrl),
-              ),
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 140,
-              child: const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [AppPalette.inkA55, Color(0x001C1917)],
+        backgroundColor: AppPalette.surface,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              _buildTopBar(),
+              Expanded(
+                child: ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    bottom: AppSpacing.safeBottom(context, extra: AppSpacing.xl),
                   ),
-                ),
-              ),
-            ),
-
-            // ── Scrolling content sheet ──────────────────────────────────
-            CustomScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: SizedBox(height: heroHeight - AppSpacing.xxl),
-                ),
-                SliverToBoxAdapter(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: AppPalette.canvas,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(AppRadii.sheet),
-                      ),
-                      boxShadow: AppShadows.overlay,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Center(child: AppSheetHandle()),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            inset,
-                            AppSpacing.xs,
-                            inset,
-                            0,
-                          ),
-                          child: _buildDetail(product, context),
-                        ),
-                        if (_similar.isNotEmpty) _buildSimilarRail(),
-                        // Clears the sticky action bar.
-                        SizedBox(
-                          height: AppSpacing.safeBottom(
-                            context,
-                            extra: 96,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // ── Floating app bar ─────────────────────────────────────────
-            ValueListenableBuilder<bool>(
-              valueListenable: _scrolledPastHero,
-              builder: (context, scrolled, _) => AnimatedContainer(
-                duration: AppMotion.fast,
-                color: scrolled ? AppPalette.canvas : Colors.transparent,
-                child: SafeArea(
-                  bottom: false,
-                  child: SizedBox(
-                    height: 52,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: inset - AppSpacing.xs,
-                      ),
-                      child: Row(
+                  children: [
+                    _buildGallery(),
+                    if (_images.length > 1) _buildThumbnailStrip(inset),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: inset),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          AppIconButton(
-                            icon: Icons.arrow_back,
-                            filled: !scrolled,
-                            background:
-                                scrolled ? null : AppPalette.surfaceA92,
-                            onPressed: () => Navigator.of(context).maybePop(),
-                          ),
-                          const Spacer(),
-                          ListenableBuilder(
-                            listenable: WishlistService.instance,
-                            builder: (context, _) {
-                              final saved = WishlistService.instance
-                                  .containsId(product.id);
-                              return AppIconButton(
-                                icon: saved
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: saved ? AppPalette.danger : null,
-                                filled: !scrolled,
-                                background:
-                                    scrolled ? null : AppPalette.surfaceA92,
-                                tooltip: saved
-                                    ? 'Remove from wishlist'
-                                    : 'Save to wishlist',
-                                onPressed: _toggleWishlist,
-                              );
-                            },
-                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          _buildIdentity(product),
+                          const SizedBox(height: AppSpacing.sm),
+                          _buildProvenance(product),
+                          const SizedBox(height: AppSpacing.lg),
+                          if (product.sellerName != null) ...[
+                            _buildSellerCard(product),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          _buildAttributes(product),
+                          const SizedBox(height: AppSpacing.lg),
+                          _buildAssuranceCard(product),
+                          const SizedBox(height: AppSpacing.lg),
+                          _buildDescription(product),
                         ],
                       ),
                     ),
-                  ),
+                    if (_similar.isNotEmpty) _buildSimilarRail(),
+                  ],
                 ),
               ),
-            ),
-
-            // ── Sticky action bar ────────────────────────────────────────
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _ActionBar(
-                canBuy: product.stock > 0,
-                isLoading: _isAddingToCart,
-                onTryOn: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const VirtualTryOnScreen(),
-                  ),
-                ),
-                onAddToBag: _openVariantPicker,
-              ),
-            ),
-          ],
+              _buildActionBar(product),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDetail(ParentProduct product, BuildContext context) {
-    final signals = <Widget>[
-      if (product.viewersNow > 0)
-        AppBadge(
-          '${product.viewersNow} viewing now',
-          icon: Icons.visibility_outlined,
-          tone: AppBadgeTone.neutral,
-          soft: true,
+  // ── 0. Top bar (nodes 490:950, 490:953) ─────────────────────────────────
+  Widget _buildTopBar() {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.page(context) - AppSpacing.xs,
+        vertical: AppSpacing.xxs,
+      ),
+      child: Row(
+        children: [
+          AppIconButton(
+            icon: Icons.arrow_back,
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          const Spacer(),
+          ListenableBuilder(
+            listenable: WishlistService.instance,
+            builder: (context, _) {
+              final saved =
+                  WishlistService.instance.containsId(widget.product.id);
+              return AppIconButton(
+                icon: saved ? Icons.favorite : Icons.favorite_border,
+                color: saved ? AppPalette.danger : null,
+                tooltip: saved ? 'Remove from wishlist' : 'Save to wishlist',
+                onPressed: _toggleWishlist,
+              );
+            },
+          ),
+          AppIconButton(
+            icon: Icons.ios_share,
+            tooltip: 'Share',
+            onPressed: () => AppSnack.show(
+              context,
+              'Sharing ${widget.product.name}',
+              icon: Icons.ios_share,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 1. Gallery (nodes 490:983–988) ──────────────────────────────────────
+  Widget _buildGallery() {
+    return SizedBox(
+      height: _Spec.heroHeight,
+      child: Stack(
+        children: [
+          // Side peeks: the design shows the neighbouring frames bleeding in
+          // at both edges so the gallery reads as horizontally scrollable.
+          const Positioned.fill(
+            child: Row(
+              children: [
+                SizedBox(
+                  width: _Spec.heroSidePeek,
+                  child: ColoredBox(color: _Ink.peekLeft),
+                ),
+                Spacer(),
+                SizedBox(
+                  width: _Spec.heroSidePeek,
+                  child: ColoredBox(color: _Ink.peekRight),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: _Spec.heroSidePeek,
+            ),
+            child: PageView.builder(
+              controller: _galleryController,
+              itemCount: _images.length,
+              onPageChanged: (i) => setState(() => _galleryIndex = i),
+              itemBuilder: (context, i) {
+                final image = AppImage(url: _images[i], cacheWidth: 800);
+                // Only the first frame carries the hero tag — tagging every
+                // page would create duplicate tags in the same tree.
+                return i == 0
+                    ? Hero(
+                        tag: widget.heroTag ?? widget.product.id,
+                        child: image,
+                      )
+                    : image;
+              },
+            ),
+          ),
+          if (_images.length > 1)
+            Positioned(
+              top: AppSpacing.xs,
+              right: AppSpacing.xxl,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: _Ink.indexPill,
+                  borderRadius: BorderRadius.circular(_Spec.indexPillRadius),
+                ),
+                child: Text(
+                  '${_galleryIndex + 1}/${_images.length}',
+                  style: AppType.badge.copyWith(
+                    fontSize: 8,
+                    letterSpacing: 0.4,
+                    color: AppPalette.textOnDark,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThumbnailStrip(double inset) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset, AppSpacing.md, inset, 0),
+      child: SizedBox(
+        height: _Spec.thumbHeight,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          itemCount: _images.length,
+          separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.xs),
+          itemBuilder: (context, i) {
+            final selected = i == _galleryIndex;
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _galleryController.animateToPage(
+                  i,
+                  duration: AppMotion.normal,
+                  curve: AppMotion.standard,
+                );
+              },
+              child: AnimatedContainer(
+                duration: AppMotion.fast,
+                width: _Spec.thumbWidth,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(_Spec.thumbRadius),
+                  border: Border.all(
+                    color: selected ? _Ink.brand : _Ink.cardBorder,
+                    width: selected ? 1 : 0.5,
+                  ),
+                ),
+                child: AppImage(url: _images[i], cacheWidth: 160),
+              ),
+            );
+          },
         ),
-      if (product.orderedToday > 0)
-        AppBadge(
-          '${product.orderedToday} ordered today',
-          icon: Icons.local_fire_department_outlined,
-          tone: AppBadgeTone.warning,
-          soft: true,
-        ),
-      if (product.stock > 0 && product.stock < 4)
-        AppBadge(
-          'Only ${product.stock} left',
-          icon: Icons.bolt_rounded,
-          tone: AppBadgeTone.danger,
-          soft: true,
-        ),
-    ];
+      ),
+    );
+  }
+
+  // ── 2. Identity (nodes 490:989–998) ─────────────────────────────────────
+  Widget _buildIdentity(ParentProduct product) {
+    final discount = product.discountPercent;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Flexible(
-              child: Text(
-                product.brand.toUpperCase(),
-                style: AppType.eyebrow.copyWith(color: AppPalette.accent),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text('·', style: AppType.eyebrow),
-            const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                product.category.toUpperCase(),
-                style: AppType.eyebrow,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (product.isNew) ...[
-              const SizedBox(width: AppSpacing.xs),
-              const AppBadge('New Drop', tone: AppBadgeTone.accent),
-            ],
-          ],
+        Text(
+          product.brand.toUpperCase(),
+          style: AppType.displaySmall.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 1,
+          ),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.xxs),
         Text(
           product.name,
-          style: AppType.displayLarge.responsive(context),
+          style: AppType.displaySmall.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.9,
+          ),
         ),
         const SizedBox(height: AppSpacing.sm),
         Row(
@@ -342,48 +414,275 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           children: [
             Text(
               product.lowestPrice,
-              style: AppType.priceLarge.copyWith(fontSize: 24),
+              style: AppType.priceLarge.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.9,
+              ),
             ),
             if (product.originalPriceFormatted != null) ...[
-              const SizedBox(width: AppSpacing.xs),
+              const SizedBox(width: AppSpacing.sm),
               Text(
                 product.originalPriceFormatted!,
-                style: AppType.priceStrike.copyWith(fontSize: 15),
+                style: AppType.priceStrike.copyWith(
+                  fontSize: 10,
+                  color: _Ink.priceStrike,
+                  decorationColor: _Ink.priceStrike,
+                ),
+              ),
+            ],
+            if (discount != null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                '$discount% off',
+                style: AppType.bodySmall.copyWith(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  color: _Ink.brand,
+                ),
               ),
             ],
           ],
         ),
-        if (signals.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: signals,
+      ],
+    );
+  }
+
+  // ── 3. Provenance (nodes 490:992–995) ───────────────────────────────────
+  Widget _buildProvenance(ParentProduct product) {
+    final grade = product.conditionGrade;
+    if (grade == null && !product.isVerifiedItem) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: [
+        if (grade != null)
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: 2,
+            ),
+            decoration: BoxDecoration(
+              color: AppPalette.textOnInk,
+              borderRadius: BorderRadius.circular(_Spec.indexPillRadius),
+              border: Border.all(color: _Ink.brand, width: 0.5),
+            ),
+            child: Text(
+              grade,
+              style: AppType.badge.copyWith(
+                fontSize: 8,
+                letterSpacing: 0.4,
+                color: _Ink.brand,
+              ),
+            ),
+          ),
+        if (product.isVerifiedItem) ...[
+          const SizedBox(width: AppSpacing.sm),
+          const Icon(Icons.check_circle, size: 9, color: _Ink.brand),
+          const SizedBox(width: AppSpacing.xxs),
+          Text(
+            'Verified Item',
+            style: AppType.badge.copyWith(
+              fontSize: 8,
+              letterSpacing: 0.4,
+              color: _Ink.brand,
+            ),
           ),
         ],
-        const SizedBox(height: AppSpacing.lg),
-        const AppDivider(),
-        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+
+  // ── 4. Seller (nodes 490:965, 490:1008–1015) ────────────────────────────
+  Widget _buildSellerCard(ParentProduct product) {
+    return GestureDetector(
+      onTap: () => AppSnack.show(
+        context,
+        'Seller profiles are coming soon',
+        icon: Icons.storefront_outlined,
+      ),
+      child: Container(
+        height: _Spec.sellerCardHeight,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_Spec.cardRadius),
+          border: Border.all(color: _Ink.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: const BoxDecoration(
+                color: AppPalette.surfaceMuted,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.person_outline,
+                size: 16,
+                color: AppPalette.textSecondary,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.sellerName!,
+                    style: AppType.bodySmall.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: AppPalette.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      if (product.sellerRating != null) ...[
+                        Text(
+                          product.sellerRating!.toStringAsFixed(1),
+                          style: AppType.bodySmall.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppPalette.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xxs),
+                        Text(
+                          '(${product.sellerReviewCount})',
+                          style: AppType.bodySmall.copyWith(fontSize: 10),
+                        ),
+                      ],
+                      if (product.isVerifiedSeller) ...[
+                        const SizedBox(width: AppSpacing.xs),
+                        const Icon(
+                          Icons.verified,
+                          size: 8,
+                          color: _Ink.brand,
+                        ),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            'Verified Seller',
+                            style: AppType.badge.copyWith(
+                              fontSize: 8,
+                              letterSpacing: 0.4,
+                              color: _Ink.brand,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: AppPalette.textTertiary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── 5. Attributes (nodes 490:975–982) ───────────────────────────────────
+  Widget _buildAttributes(ParentProduct product) {
+    final entries = <({String label, String value})>[
+      if (product.sizes.isNotEmpty)
+        (label: 'Size', value: product.sizes.first),
+      if (product.colors.isNotEmpty)
+        (label: 'Color', value: product.colors.first.name),
+      if (product.conditionLabel != null)
+        (label: 'Condition', value: product.conditionLabel!),
+      (label: 'Brand', value: product.brand),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final entry in entries)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.label,
+                  style: AppType.bodySmall.copyWith(
+                    fontSize: 10,
+                    letterSpacing: 0.5,
+                    color: AppPalette.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  entry.value,
+                  style: AppType.label.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── 6. Assurance (nodes 490:964, 490:966–974) ───────────────────────────
+  Widget _buildAssuranceCard(ParentProduct product) {
+    return Container(
+      height: _Spec.assuranceCardHeight,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: _Ink.assuranceFill,
+        borderRadius: BorderRadius.circular(_Spec.cardRadius),
+        border: Border.all(color: _Ink.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _AssuranceEntry(
+              icon: Icons.local_shipping_outlined,
+              title: 'Delivered in',
+              value: product.deliveryEta ?? '2 hours',
+              note: product.deliveryNote ?? 'Express delivery',
+            ),
+          ),
+          Expanded(
+            child: _AssuranceEntry(
+              icon: Icons.access_time,
+              title: 'Try & Return',
+              value: product.returnWindow ?? '30 min window',
+              note: product.returnNote ?? 'Easy return if it doesn\'t fit',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescription(ParentProduct product) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Text('About This Piece'.toUpperCase(), style: AppType.eyebrow),
         const SizedBox(height: AppSpacing.xs),
-        Text(product.description, style: AppType.bodyLarge),
-        if (product.sizes.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.lg),
-          Text('Available Sizes'.toUpperCase(), style: AppType.eyebrow),
-          const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: [
-              for (final size in product.sizes)
-                AppChip(
-                  label: size,
-                  disabled: !product.sizeHasStock(size),
-                  onTap: _openVariantPicker,
-                ),
-            ],
-          ),
-        ],
+        Text(product.description, style: AppType.bodyMedium),
       ],
     );
   }
@@ -394,7 +693,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppSectionHeader(title: 'You Might Also Like'),
+        const AppSectionHeader(title: 'More Like This'),
         SizedBox(
           height: AppProductGridDelegate.railHeight(context),
           child: ListView.separated(
@@ -435,59 +734,175 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ],
     );
   }
-}
 
-/// The persistent buy bar. Sits above the safe area and stays reachable no
-/// matter how far the page is scrolled.
-class _ActionBar extends StatelessWidget {
-  final bool canBuy;
-  final bool isLoading;
-  final VoidCallback onTryOn;
-  final VoidCallback onAddToBag;
-
-  const _ActionBar({
-    required this.canBuy,
-    required this.isLoading,
-    required this.onTryOn,
-    required this.onAddToBag,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final inset = AppSpacing.page(context);
+  // ── 7. Action bar (nodes 490:961–963) ───────────────────────────────────
+  Widget _buildActionBar(ParentProduct product) {
+    final canBuy = product.stock > 0;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-        inset,
+        AppSpacing.page(context),
         AppSpacing.sm,
-        inset,
+        AppSpacing.page(context),
         AppSpacing.safeBottom(context, extra: AppSpacing.sm),
       ),
       decoration: const BoxDecoration(
         color: AppPalette.surface,
-        border: Border(top: BorderSide(color: AppPalette.line)),
+        border: Border(top: BorderSide(color: _Ink.cardBorder)),
       ),
       child: Row(
         children: [
-          Expanded(
-            child: AppButton.secondary(
-              label: 'Try On',
-              icon: Icons.camera_alt_outlined,
-              onPressed: onTryOn,
+          // Wishlist square — node 490:963.
+          ListenableBuilder(
+            listenable: WishlistService.instance,
+            builder: (context, _) {
+              final saved = WishlistService.instance.containsId(product.id);
+              return GestureDetector(
+                onTap: _toggleWishlist,
+                child: Container(
+                  width: _Spec.wishlistWidth,
+                  height: _Spec.ctaHeight,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_Spec.ctaRadius),
+                    border: Border.all(color: _Ink.cardBorder),
+                  ),
+                  child: Icon(
+                    saved ? Icons.favorite : Icons.favorite_border,
+                    size: 20,
+                    color:
+                        saved ? AppPalette.danger : AppPalette.textSecondary,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // Try-on stays available: it is existing functionality the design
+          // has no slot for, so it sits as a compact square rather than being
+          // dropped.
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VirtualTryOnScreen()),
+            ),
+            child: Container(
+              width: _Spec.wishlistWidth,
+              height: _Spec.ctaHeight,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(_Spec.ctaRadius),
+                border: Border.all(color: _Ink.cardBorder),
+              ),
+              child: const Icon(
+                Icons.camera_alt_outlined,
+                size: 20,
+                color: AppPalette.textSecondary,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
+          // Add to Cart — node 490:961, brown fill, 5px radius.
           Expanded(
-            flex: 2,
-            child: AppButton(
-              label: canBuy ? 'Add to Bag' : 'Sold Out',
-              icon: canBuy ? Icons.shopping_bag_outlined : null,
-              isLoading: isLoading,
-              onPressed: canBuy ? onAddToBag : null,
+            child: GestureDetector(
+              onTap: canBuy && !_isAddingToCart ? _openVariantPicker : null,
+              child: Container(
+                height: _Spec.ctaHeight,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: canBuy ? _Ink.brand : AppPalette.surfaceSunken,
+                  borderRadius: BorderRadius.circular(_Spec.ctaRadius),
+                ),
+                child: _isAddingToCart
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppPalette.textOnDark,
+                        ),
+                      )
+                    : Text(
+                        canBuy ? 'Add to Cart' : 'Sold Out',
+                        style: AppType.bodyLarge.copyWith(
+                          fontSize: 16,
+                          letterSpacing: 0.8,
+                          color: canBuy
+                              ? AppPalette.textOnDark
+                              : AppPalette.textTertiary,
+                        ),
+                      ),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One half of the assurance card: icon, label, value and fine print.
+class _AssuranceEntry extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final String note;
+
+  const _AssuranceEntry({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.note,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 17, color: AppPalette.textPrimary),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: AppType.bodySmall.copyWith(
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                  color: AppPalette.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                value,
+                style: AppType.bodySmall.copyWith(
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                  color: AppPalette.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                note,
+                style: AppType.bodySmall.copyWith(
+                  fontSize: 8,
+                  letterSpacing: 0.4,
+                  color: _Ink.finePrint,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

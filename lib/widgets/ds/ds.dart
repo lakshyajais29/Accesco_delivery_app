@@ -28,6 +28,7 @@ export 'app_input.dart';
 export 'app_navigation.dart';
 export 'app_overlays.dart';
 export 'app_product_card.dart';
+export 'app_progress_overlay.dart';
 export 'app_shimmer.dart';
 export 'app_state_views.dart';
 export 'app_surfaces.dart';

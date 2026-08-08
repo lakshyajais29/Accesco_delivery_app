@@ -12,7 +12,6 @@
 //
 // FILE PLACEMENT — see README below in this file.
 
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -107,7 +106,7 @@ TextStyle _skuMono(double size) =>
         letterSpacing: 0.4);
 
 TextStyle _conditionText(double size, {required Color color}) =>
-    GoogleFonts.montserrat(fontSize: size, fontWeight: FontWeight.w900, color: color);
+    AppType.label.copyWith(fontSize: size, fontWeight: FontWeight.w900, color: color);
 
 // ─── MODELS ──────────────────────────────────────────────────────────────────
 enum _Condition { likeNew, gentlyUsed, vintageFind }
@@ -648,7 +647,7 @@ class _ThriftMarketplaceScreenState extends State<ThriftMarketplaceScreen>
           shape: const CircleBorder(),
           child: Text('SELL\nNOW',
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
+              style: AppType.label.copyWith(
                   fontSize: 9, fontWeight: FontWeight.w900,
                   color: _TC.bg, height: 1.3, letterSpacing: 0.5)),
         ),
@@ -710,7 +709,7 @@ class _ThriftMarketplaceScreenState extends State<ThriftMarketplaceScreen>
                 width: 15, height: 15,
                 decoration: const BoxDecoration(color: Color(0xFFE91E8C), shape: BoxShape.circle),
                 child: Center(child: Text('${_cartEntries.length}',
-                    style: GoogleFonts.jost(fontSize: 8, fontWeight: FontWeight.w700,
+                    style: AppType.label.copyWith(fontSize: 8, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: 0))),
               )),
           ]),
@@ -860,7 +859,7 @@ class _CartSheet extends StatelessWidget {
                   ]),
                   trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text(_fmtPrice(item.unitPriceInPaise),
-                        style: GoogleFonts.jost(
+                        style: AppType.label.copyWith(
                             fontSize: 13, fontWeight: FontWeight.w700, color: _TC.tan)),
                     const SizedBox(height: 4),
                     GestureDetector(
@@ -878,7 +877,7 @@ class _CartSheet extends StatelessWidget {
           Text('TOTAL', style: _label(11, color: _TC.grey400, spacing: 1)),
           const Spacer(),
           Text(_formatTotal(entries),
-              style: GoogleFonts.bebasNeue(
+              style: AppType.displayMedium.copyWith(
                   fontSize: 22, color: _TC.tanLight, letterSpacing: 1)),
         ])),
         Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), child: GestureDetector(
@@ -890,7 +889,7 @@ class _CartSheet extends StatelessWidget {
               entries.isEmpty
                   ? 'CART IS EMPTY'
                   : 'CHECKOUT  —  ${entries.length} ITEM${entries.length == 1 ? '' : 'S'}',
-              style: GoogleFonts.bebasNeue(
+              style: AppType.displayMedium.copyWith(
                   fontSize: 18, color: _TC.bg, letterSpacing: 2))),
           ),
         )),
@@ -1066,7 +1065,7 @@ const SizedBox(height: 6),
                   Expanded(
                     flex: 3,
                     child: Text(p.thriftPrice,
-                        style: GoogleFonts.jost(
+                        style: AppType.label.copyWith(
                             fontSize: 15, fontWeight: FontWeight.w700, color: _TC.tan),
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
@@ -1138,7 +1137,7 @@ class _ThriftVariantCue extends StatelessWidget {
             ),
           );
         }),
-        Text('+${parent.sizes.length}', style: GoogleFonts.jost(fontSize: 7, color: _TC.offWhite, fontWeight: FontWeight.w600)),
+        Text('+${parent.sizes.length}', style: AppType.label.copyWith(fontSize: 7, color: _TC.offWhite, fontWeight: FontWeight.w600)),
       ]),
     );
   }
@@ -1186,7 +1185,7 @@ class _NewDropBadge extends StatelessWidget {
           border: Border.all(color: _TC.newDropText.withValues(alpha: 0.6), width: 0.8),
           boxShadow: [BoxShadow(color: _TC.newDropText.withValues(alpha: 0.25), blurRadius: 6)]),
       child: Stack(children: [
-        Text('NEW', style: GoogleFonts.montserrat(fontSize: 9, fontWeight: FontWeight.w900,
+        Text('NEW', style: AppType.label.copyWith(fontSize: 9, fontWeight: FontWeight.w900,
             color: _TC.newDropText, letterSpacing: 1.0)),
         Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(4),
           child: Transform.translate(offset: Offset(shimmerAnim.value * 30, 0),
@@ -1207,7 +1206,7 @@ class _TrendingBadge extends StatelessWidget {
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       const Text('👑', style: TextStyle(fontSize: 9)),
       const SizedBox(width: 4),
-      Text('#1 in $category', style: GoogleFonts.montserrat(fontSize: 8, fontWeight: FontWeight.w700,
+      Text('#1 in $category', style: AppType.label.copyWith(fontSize: 8, fontWeight: FontWeight.w700,
           color: _TC.tanLight, letterSpacing: 0.3)),
     ]),
   );

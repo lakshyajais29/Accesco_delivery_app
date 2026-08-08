@@ -171,6 +171,27 @@ class AppPalette {
   static const Color warningSoft = Color(0xFFFDF3E3);
   static const Color successSoft = Color(0xFFECF3EF);
 
+  // ── Figma-exact editorial tones ────────────────────────────────────────
+  // Sampled directly from ACCESCO LIVING → Page 2 → "Thrift Marketplace
+  // Banner" (node 578:6842). The tokens above were derived from reference
+  // screenshots and sit within a few units of these; where a component must
+  // match the design file exactly, use these instead.
+
+  /// Warm card fill on promotional surfaces. Figma `#f7f3eb`.
+  static const Color surfaceWarm = Color(0xFFF7F3EB);
+
+  /// Image-well fill behind product photography. Figma `#f5f0e6`.
+  static const Color surfaceWarmAlt = Color(0xFFF5F0E6);
+
+  /// Hairline on warm surfaces. Figma `#eae5dc`.
+  static const Color lineWarm = Color(0xFFEAE5DC);
+
+  /// Supporting copy on warm surfaces. Figma `#78716c`.
+  static const Color textMutedWarm = Color(0xFF78716C);
+
+  /// Label on an ink-filled control. Figma `#fdfbf7`.
+  static const Color textOnInk = Color(0xFFFDFBF7);
+
   // ── Structural ─────────────────────────────────────────────────────────
   /// Hairline rules. Barely visible — structure, not decoration.
   static const Color line = Color(0xFFEAE4DC);

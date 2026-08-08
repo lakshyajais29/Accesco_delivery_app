@@ -48,6 +48,10 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app requires access to your location for map tracking.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>This app requires access to your camera for the Virtual Try-On body mapping feature.</string>
+	<string>InstaStyle uses your camera for Virtual Try-On body mapping and to photograph items you list on the Thrift Marketplace.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>InstaStyle needs access to your photos so you can choose images for the items you list on the Thrift Marketplace.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>InstaStyle saves Virtual Try-On results and listing photos to your library.</string>
 </dict>
 </plist>

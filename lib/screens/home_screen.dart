@@ -1,4 +1,4 @@
-+import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,11 +7,14 @@ import '../models/product_model.dart';
 import '../services/catalog_service.dart';
 import '../services/wishlist_service.dart';
 import '../widgets/ds/ds.dart';
+import '../widgets/thrift_marketplace_section.dart';
 import 'instant_outfit_builder_screen.dart';
+import 'cart_screen.dart';
 import 'product_detail_screen.dart';
-import 'style_profile_screen.dart';
+import 'style_circle_screen.dart';
+import 'profile_screen.dart';
+import 'thrift/thrift_home_screen.dart';
 import 'swipe_style_screen.dart';
-import 'thrift_marketplace_screen.dart';
 import 'trial_at_doorstep_screen.dart';
 import 'wishlist_screen.dart';
 
@@ -142,6 +145,13 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _campaignTimer;
   late final AnimationController _entranceCtrl;
 
+  // ── Location ──────────────────────────────────────────────────────────
+  // Drives the Thrift Marketplace's nearby-store rail. Stays null until a fix
+  // is available; the section renders its banner regardless, so a user who
+  // has declined location permission still sees the feature.
+  double? _latitude;
+  double? _longitude;
+
   // ── Memoised catalogue slices ─────────────────────────────────────────
   // The catalogue queries filter and sort the full list on every call, so
   // running them inside build() would re-sort five lists on every frame that
@@ -178,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       WishlistService.instance.load();
+      _resolveLocation();
       for (final campaign in _campaigns) {
         precacheImage(NetworkImage(campaign.imageUrl), context);
       }
@@ -348,6 +359,29 @@ class _HomeScreenState extends State<HomeScreen>
     _selectFilter(selected);
   }
 
+  /// Supplies the coordinate the thrift rail queries against.
+  ///
+  /// Currently falls back to InstaStyle's operating city so the rail has data
+  /// to show. Wire this to a real device fix (`permission_handler` plus a
+  /// location plugin) when that flow is built — the section already handles a
+  /// null coordinate by rendering the banner alone.
+  void _resolveLocation() {
+    if (!mounted) return;
+    setState(() {
+      _latitude = 17.4065; // Hyderabad — matches the "Trending in" rail.
+      _longitude = 78.4772;
+    });
+  }
+
+  /// Enters the nested thrift ecosystem.
+  ///
+  /// Everything resale — browsing, listing, seller tools — lives inside
+  /// [ThriftHomeScreen] rather than on the main navigation, so this is the
+  /// single door into that subtree.
+  void _openThriftMarketplace({String? storeId}) {
+    Navigator.push(context, ThriftHomeScreen.route());
+  }
+
   void _openProduct(ParentProduct product, String heroTag) {
     Navigator.push(
       context,
@@ -372,10 +406,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         );
       case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ThriftMarketplaceScreen()),
-        );
+        // The Thrift tab opens the nested ecosystem hub, not the listing grid
+        // directly — buying and selling both live behind it.
+        Navigator.push(context, ThriftHomeScreen.route());
       case 4:
         Navigator.push(
           context,
@@ -425,14 +458,17 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(width: AppSpacing.xxs),
                   AppIconButton(
+                    icon: Icons.shopping_bag_outlined,
+                    tooltip: 'Bag',
+                    onPressed: () =>
+                        Navigator.push(context, CartScreen.route()),
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
+                  AppIconButton(
                     icon: Icons.person_outline,
                     tooltip: 'Profile',
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const StyleProfileScreen(),
-                      ),
-                    ),
+                    onPressed: () =>
+                        Navigator.push(context, ProfileScreen.route()),
                   ),
                 ],
               ),
@@ -571,7 +607,42 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
 
-                      // ── 4. The Edit — refine, count, grid ──────────────
+                      // ── 3b. Style Circle ───────────────────────────────
+                      // The community feed sits after the curated rails: it
+                      // is discovery by people rather than by merchandising.
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            inset,
+                            AppSpacing.xl,
+                            inset,
+                            0,
+                          ),
+                          child: _StyleCircleTeaser(
+                            onTap: () => Navigator.push(
+                              context,
+                              StyleCircleScreen.route(),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ── 4. Thrift Marketplace ──────────────────────────
+                      // Sits after the discovery rails and before the main
+                      // grid: browsing intent is already warm here, but the
+                      // user hasn't committed to the catalogue yet.
+                      SliverToBoxAdapter(
+                        child: ThriftMarketplaceSection(
+                          latitude: _latitude,
+                          longitude: _longitude,
+                          onExplore: _openThriftMarketplace,
+                          onStoreTap: (store) => _openThriftMarketplace(
+                            storeId: store.id,
+                          ),
+                        ),
+                      ),
+
+                      // ── 5. The Edit — refine, count, grid ──────────────
                       const SliverToBoxAdapter(
                         child: AppSectionHeader(
                           title: 'The Edit',
@@ -609,7 +680,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       _buildGrid(inset),
 
-                      // ── 5. Quick reorder ───────────────────────────────
+                      // ── 6. Quick reorder ───────────────────────────────
                       SliverToBoxAdapter(child: _buildQuickReorder()),
                       SliverToBoxAdapter(
                         child: SizedBox(height: AppSpacing.xxl),
@@ -919,6 +990,74 @@ class _WishlistAwareCard extends StatelessWidget {
           onTap: onTap,
         );
       },
+    );
+  }
+}
+
+/// Entry point to the Style Circle community feed.
+///
+/// A compact banner rather than an inline rail: the feed has its own filters
+/// and staggered layout, and duplicating a slice of it here would compete with
+/// the merchandised rails directly above.
+class _StyleCircleTeaser extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _StyleCircleTeaser({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppPalette.surfaceWarm,
+          borderRadius: AppRadii.card,
+          border: Border.all(color: AppPalette.lineWarm),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'The Community'.toUpperCase(),
+                    style: AppType.eyebrow.copyWith(color: AppPalette.accent),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Style Circle',
+                    style: AppType.displayMedium.responsive(context),
+                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    'Real people. Real styles. Real inspiration.',
+                    style: AppType.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: AppPalette.accentSoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.people_outline,
+                size: 24,
+                color: AppPalette.accentDeep,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

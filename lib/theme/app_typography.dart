@@ -6,11 +6,19 @@ import 'app_colors.dart';
 /// ═══════════════════════════════════════════════════════════════════════════
 /// INSTASTYLE TYPE SCALE
 ///
+/// The two faces are taken from the Figma file (ACCESCO LIVING → Page 2),
+/// which specifies `Playfair Display` for display copy and `Inter` for
+/// interface copy — see the brand/product names on node 490:944 and the
+/// labels on 578:6842. An earlier revision of this file used Cormorant
+/// Garamond and Jost, inferred from reference screenshots before the design
+/// file was available; those were close in feel but not the design's actual
+/// faces.
+///
 /// Two voices, used with discipline:
 ///
-///   • Cormorant Garamond — the *editorial* voice. Banner headlines, screen
+///   • Playfair Display — the *editorial* voice. Banner headlines, screen
 ///     titles, product names on detail pages. Never below 18px, never ALL CAPS.
-///   • Jost — the *interface* voice. Everything else: eyebrows, labels, body,
+///   • Inter — the *interface* voice. Everything else: eyebrows, labels, body,
 ///     buttons, prices, metadata.
 ///
 /// Every style is a `static final` (not a getter) so `GoogleFonts.x()` resolves
@@ -22,7 +30,7 @@ class AppType {
 
   // ── Editorial / serif display ──────────────────────────────────────────
   /// Banner hero headline. "Fashion, Refined".
-  static final displayLarge = GoogleFonts.cormorantGaramond(
+  static final displayLarge = GoogleFonts.playfairDisplay(
     fontSize: 34,
     fontWeight: FontWeight.w600,
     height: 1.06,
@@ -31,7 +39,7 @@ class AppType {
   );
 
   /// Screen titles, sheet titles, section features.
-  static final displayMedium = GoogleFonts.cormorantGaramond(
+  static final displayMedium = GoogleFonts.playfairDisplay(
     fontSize: 26,
     fontWeight: FontWeight.w600,
     height: 1.12,
@@ -40,7 +48,7 @@ class AppType {
   );
 
   /// Product names on detail pages, card feature titles.
-  static final displaySmall = GoogleFonts.cormorantGaramond(
+  static final displaySmall = GoogleFonts.playfairDisplay(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     height: 1.2,
@@ -48,7 +56,7 @@ class AppType {
   );
 
   /// The wordmark. Slightly tracked-out serif.
-  static final wordmark = GoogleFonts.cormorantGaramond(
+  static final wordmark = GoogleFonts.playfairDisplay(
     fontSize: 22,
     fontWeight: FontWeight.w600,
     height: 1.0,
@@ -58,7 +66,7 @@ class AppType {
 
   // ── Interface / sans ───────────────────────────────────────────────────
   /// Small tracked-out ALL CAPS kicker above a headline. "THE STUDIO".
-  static final eyebrow = GoogleFonts.jost(
+  static final eyebrow = GoogleFonts.inter(
     fontSize: 10,
     fontWeight: FontWeight.w500,
     height: 1.2,
@@ -67,7 +75,7 @@ class AppType {
   );
 
   /// Section headers, tab labels, refine/sort bar. ALL CAPS.
-  static final overline = GoogleFonts.jost(
+  static final overline = GoogleFonts.inter(
     fontSize: 11,
     fontWeight: FontWeight.w600,
     height: 1.2,
@@ -76,7 +84,7 @@ class AppType {
   );
 
   /// Sans title — list rows, card headers, dialog titles.
-  static final titleLarge = GoogleFonts.jost(
+  static final titleLarge = GoogleFonts.inter(
     fontSize: 17,
     fontWeight: FontWeight.w600,
     height: 1.3,
@@ -84,7 +92,7 @@ class AppType {
     color: AppPalette.textPrimary,
   );
 
-  static final titleMedium = GoogleFonts.jost(
+  static final titleMedium = GoogleFonts.inter(
     fontSize: 15,
     fontWeight: FontWeight.w600,
     height: 1.3,
@@ -93,7 +101,7 @@ class AppType {
   );
 
   /// Product card name.
-  static final titleSmall = GoogleFonts.jost(
+  static final titleSmall = GoogleFonts.inter(
     fontSize: 13,
     fontWeight: FontWeight.w500,
     height: 1.3,
@@ -102,14 +110,14 @@ class AppType {
   );
 
   /// Default reading copy.
-  static final bodyLarge = GoogleFonts.jost(
+  static final bodyLarge = GoogleFonts.inter(
     fontSize: 15,
     fontWeight: FontWeight.w400,
     height: 1.55,
     color: AppPalette.textSecondary,
   );
 
-  static final bodyMedium = GoogleFonts.jost(
+  static final bodyMedium = GoogleFonts.inter(
     fontSize: 13,
     fontWeight: FontWeight.w400,
     height: 1.55,
@@ -117,7 +125,7 @@ class AppType {
   );
 
   /// Metadata, captions, helper text under inputs.
-  static final bodySmall = GoogleFonts.jost(
+  static final bodySmall = GoogleFonts.inter(
     fontSize: 11,
     fontWeight: FontWeight.w400,
     height: 1.45,
@@ -125,7 +133,7 @@ class AppType {
   );
 
   /// Button text. Tracked slightly for weight at small sizes.
-  static final button = GoogleFonts.jost(
+  static final button = GoogleFonts.inter(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     height: 1.0,
@@ -134,7 +142,7 @@ class AppType {
   );
 
   /// Chip / tag / badge label.
-  static final label = GoogleFonts.jost(
+  static final label = GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     height: 1.2,
@@ -143,7 +151,7 @@ class AppType {
   );
 
   /// Micro ALL CAPS badge. "NEW", "SALE", "SOLD OUT".
-  static final badge = GoogleFonts.jost(
+  static final badge = GoogleFonts.inter(
     fontSize: 9,
     fontWeight: FontWeight.w600,
     height: 1.2,
@@ -153,7 +161,7 @@ class AppType {
 
   // ── Numeric ────────────────────────────────────────────────────────────
   /// Prices. Tabular figures so columns of prices align in grids.
-  static final price = GoogleFonts.jost(
+  static final price = GoogleFonts.inter(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     height: 1.2,
@@ -161,7 +169,7 @@ class AppType {
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 
-  static final priceLarge = GoogleFonts.jost(
+  static final priceLarge = GoogleFonts.inter(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     height: 1.2,
@@ -170,7 +178,7 @@ class AppType {
   );
 
   /// Struck-through original price beside a sale price.
-  static final priceStrike = GoogleFonts.jost(
+  static final priceStrike = GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     height: 1.2,

@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../widgets/ds/ds.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,7 +32,7 @@ class _C {
 }
 
 /// Screen-local type aliases onto the design system. `display` was Bebas Neue;
-/// it now resolves to the app's Cormorant Garamond, scaled up here because a
+/// it now resolves to the app's Playfair Display, scaled up here because a
 /// serif sets far larger than a condensed face at the same point size.
 class _T {
   static TextStyle display(double size,
@@ -1012,7 +1011,7 @@ class _StyleProfileScreenState extends State<StyleProfileScreen>
                     ),
                     child: Text(
                       '"You have no formal evening wear. 3 outfits curated just for you."',
-                      style: GoogleFonts.jost(
+                      style: AppType.label.copyWith(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: _C.white,
@@ -1103,7 +1102,7 @@ class _BrandSizeTile extends StatelessWidget {
             child: Center(
               child: Text(
                 b.logoLetter,
-                style: GoogleFonts.bebasNeue(
+                style: AppType.displayMedium.copyWith(
                   fontSize: 11,
                   color: _C.white,
                   letterSpacing: 0,

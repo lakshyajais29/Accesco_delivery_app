@@ -32,11 +32,18 @@ dependencies:
     sdk: flutter
   google_fonts: ^6.2.1
   cached_network_image: ^3.3.1
+  # Renders the exact Lucide vectors exported from Figma. Material's icon set
+  # has no glyph that matches them precisely, and re-drawing a path by hand
+  # would drift from the design.
+  flutter_svg: ^2.0.10
+  # Camera capture + gallery selection for thrift listing photos.
+  image_picker: ^1.1.2
 
   firebase_core: ^3.4.0
   cloud_firestore: ^5.0.0
   firebase_auth: ^5.0.0
   firebase_messaging: ^15.0.0
+  firebase_storage: ^12.1.0        # thrift listing photo uploads
   firebase_dynamic_links: ^6.0.0   # for share card deep links
   flutter_contacts: ^1.1.7         # read device contacts
   share_plus: ^9.0.0               # native share sheet
@@ -87,6 +94,9 @@ flutter:
     - assets/images/heels.jpg
     - assets/images/hero_banner.png
     - assets/videos/splash_video.mp4
+    # Exported from Figma "Thrift Marketplace Banner" (node 578:6842).
+    - assets/icons/
+    - assets/images/thrift/
 
 
   # To add assets to your application, add an assets section, like this:

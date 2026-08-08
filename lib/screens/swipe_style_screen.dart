@@ -1552,7 +1552,7 @@ class _OutfitCardState extends State<_OutfitCard>
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(outfit.price,
-                      style: GoogleFonts.montserrat(
+                      style: AppType.label.copyWith(
                           fontSize: 22, fontWeight: FontWeight.w900,
                           color: _C.ivory)),
                   if (outfit.originalPrice != null) ...[
@@ -1580,7 +1580,7 @@ class _OutfitCardState extends State<_OutfitCard>
                         color: _C.white.withValues(alpha: 0.22), width: 1),
                   ),
                   child: Text(tag,
-                      style: GoogleFonts.montserrat(
+                      style: AppType.label.copyWith(
                           fontSize: 9, fontWeight: FontWeight.w900,
                           color: _C.ivory, letterSpacing: 1.2)),
                 )).toList(),
@@ -1717,7 +1717,7 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
         const SizedBox(width: 5),
         Text(
           '$viewers people viewing this now',
-          style: GoogleFonts.montserrat(
+          style: AppType.label.copyWith(
             fontSize: 9, fontWeight: FontWeight.w900,
             color: _C.grey300, letterSpacing: 0.2,
           ),
@@ -1738,7 +1738,7 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
         const SizedBox(width: 5),
         Text(
           'Ordered $orders times today',
-          style: GoogleFonts.jost(
+          style: AppType.label.copyWith(
             fontSize: 9, fontWeight: FontWeight.w600,
             color: _C.brandTan, letterSpacing: 0.3,
           ),
@@ -1769,7 +1769,7 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
           color: Colors.white,
           child: Text(
             'NEW',
-            style: GoogleFonts.montserrat(
+            style: AppType.label.copyWith(
               fontSize: 7.5, fontWeight: FontWeight.w900,
               color: _C.dark, letterSpacing: 1.0,
             ),
@@ -1802,7 +1802,7 @@ class _FomoSignalRowState extends State<_FomoSignalRow>
         const SizedBox(width: 4),
         Text(
           label,
-          style: GoogleFonts.montserrat(
+          style: AppType.label.copyWith(
             fontSize: 9, fontWeight: FontWeight.w900,
             color: _C.brandTan, letterSpacing: 0.4,
           ),

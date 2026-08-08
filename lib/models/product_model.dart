@@ -65,6 +65,24 @@ class ParentProduct {
   final String? deliveryCutoff;
   final int    deliveryMinsLeft;
 
+  // ── Resale attributes (Figma node 490:944 "Item") ─────────────────────────
+  // The product detail design surfaces marketplace provenance: a condition
+  // grade, a verification mark, and the seller behind the listing. All are
+  // optional with inert defaults, so every existing `const ParentProduct(...)`
+  // in catalog_service.dart keeps compiling untouched and simply renders
+  // without these rows.
+  final String? conditionGrade;   // 'Grade A' | 'Grade B' | ...
+  final String? conditionLabel;   // 'Like New' | 'Gently Used' | ...
+  final bool    isVerifiedItem;
+  final String? sellerName;
+  final double? sellerRating;
+  final int     sellerReviewCount;
+  final bool    isVerifiedSeller;
+  final String? deliveryEta;      // '2 hours'
+  final String? deliveryNote;     // 'Express delivery in Gurgaon'
+  final String? returnWindow;     // '30 min window'
+  final String? returnNote;       // 'Easy return if it doesn't fit'
+
   const ParentProduct({
     required this.id,
     required this.name,
@@ -87,7 +105,46 @@ class ParentProduct {
     this.droppedMinsAgo = 0,
     this.deliveryCutoff,
     this.deliveryMinsLeft = 0,
+    this.conditionGrade,
+    this.conditionLabel,
+    this.isVerifiedItem = false,
+    this.sellerName,
+    this.sellerRating,
+    this.sellerReviewCount = 0,
+    this.isVerifiedSeller = false,
+    this.deliveryEta,
+    this.deliveryNote,
+    this.returnWindow,
+    this.returnNote,
   });
+
+  /// Whole-percent saving versus the struck-through original price.
+  ///
+  /// Returns null when there is no original price, or when the stored values
+  /// wouldn't produce a sensible discount — the PDP hides the badge rather
+  /// than printing "0% off" or a negative.
+  int? get discountPercent {
+    final original = originalPriceFormatted;
+    if (original == null || variantMap.isEmpty) return null;
+
+    final originalPaise = _paiseFromFormatted(original);
+    if (originalPaise == null) return null;
+
+    final currentPaise = variantMap.values
+        .map((v) => v.priceInPaise)
+        .reduce((a, b) => a < b ? a : b);
+
+    if (originalPaise <= currentPaise) return null;
+    return (((originalPaise - currentPaise) / originalPaise) * 100).round();
+  }
+
+  /// Parses '₹2,499' back into paise. The catalogue stores the original price
+  /// pre-formatted, so the percentage has to be recovered from the string.
+  static int? _paiseFromFormatted(String formatted) {
+    final digits = formatted.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return null;
+    return int.parse(digits) * 100;
+  }
 
   ProductVariant? resolve(String size, String colorHex) =>
       variantMap[ProductVariant.key(size, colorHex)];

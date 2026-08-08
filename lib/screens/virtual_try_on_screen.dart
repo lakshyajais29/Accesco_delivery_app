@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../widgets/ds/ds.dart';
 
 class VirtualTryOnScreen extends StatefulWidget {
@@ -185,7 +184,7 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                     const SizedBox(height: 16),
                     Text(
                       'Processing Body Map...',
-                      style: GoogleFonts.jost(
+                      style: AppType.label.copyWith(
                         color: Colors.white,
                         fontSize: 18,
                         letterSpacing: 2,
@@ -269,7 +268,7 @@ class _VirtualTryOnScreenState extends State<VirtualTryOnScreen>
                             ? 'The leather jacket fits perfectly.'
                             : 'Stand in frame to analyze your measurements.',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.jost(
+                        style: AppType.label.copyWith(
                           color: Colors.white70,
                           fontSize: 14,
                         ),

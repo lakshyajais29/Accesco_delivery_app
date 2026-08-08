@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-from routers import outfits, orders, tracking
+from routers import outfits, orders, tracking, thrift
 
 app = FastAPI(title="InstaStyle Backend", version="1.0")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 app.include_router(outfits.router)
 app.include_router(orders.router)
 app.include_router(tracking.router)
+app.include_router(thrift.router)
 
 @app.on_event("startup")
 async def startup():

@@ -102,7 +102,7 @@ const Curve _kTrail      = Cubic(0.25, 0.46, 0.45, 0.94);
 const Curve _kSCurve     = Cubic(0.37, 0.0, 0.63, 1);
 
 /// Screen-local type aliases onto the design system. `display` was Bebas Neue;
-/// it now resolves to the app's Cormorant Garamond, scaled up here because a
+/// it now resolves to the app's Playfair Display, scaled up here because a
 /// serif sets far larger than a condensed face at the same point size.
 class _T {
   static TextStyle display(double size,

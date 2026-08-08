@@ -82,7 +82,7 @@ class _C {
 }
 
 /// Screen-local type aliases onto the design system. `display` was Bebas Neue;
-/// it now resolves to the app's Cormorant Garamond, scaled up here because a
+/// it now resolves to the app's Playfair Display, scaled up here because a
 /// serif sets far larger than a condensed face at the same point size.
 class _T {
   static TextStyle display(double size,
