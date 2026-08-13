@@ -138,7 +138,13 @@ class _ThriftMarketplaceSectionState extends State<ThriftMarketplaceSection> {
     // of the home screen.
     if (oldWidget.latitude != widget.latitude ||
         oldWidget.longitude != widget.longitude) {
-      setState(() => _storesFuture = _load());
+      // Block body, not an arrow: `() => x = future` *returns* the future,
+      // and setState asserts its callback returns nothing. That assertion
+      // throws inside didUpdateWidget, which aborts the enclosing viewport
+      // update and cascades into duplicate-GlobalKey errors.
+      setState(() {
+        _storesFuture = _load();
+      });
     }
   }
 
@@ -150,7 +156,11 @@ class _ThriftMarketplaceSectionState extends State<ThriftMarketplaceSection> {
     );
   }
 
-  void _retry() => setState(() => _storesFuture = _load());
+  void _retry() {
+    setState(() {
+      _storesFuture = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

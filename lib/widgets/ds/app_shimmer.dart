@@ -31,6 +31,11 @@ class _ShimmerClock {
     _subscribers--;
     if (_subscribers > 0) return;
     _subscribers = 0;
+
+    // `Ticker.dispose()` asserts the ticker is not active, so it must be
+    // stopped first — disposing a running ticker trips an assertion in debug
+    // the moment the last shimmer leaves the tree.
+    _ticker?.stop();
     _ticker?.dispose();
     _ticker = null;
   }

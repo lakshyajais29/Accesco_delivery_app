@@ -9,7 +9,10 @@ plugins {
 android {
     namespace = "com.example.instastyle"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // Raised from 27.0.12077973: the `jni` transitive dependency (pulled in by
+    // flutter_contacts) requires 28.2.13676358. NDK releases are backward
+    // compatible, so the highest requirement across all plugins wins.
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

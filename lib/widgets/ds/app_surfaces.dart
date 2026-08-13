@@ -58,6 +58,13 @@ class AppCard extends StatelessWidget {
 ///
 /// This is the signature component of the design language — the first thing on
 /// the home screen and reused for campaign and category headers.
+///
+/// Sizing contract: the banner has a *minimum* height, never a fixed one. The
+/// copy column measures itself and the box grows to fit, so a two-line serif
+/// headline can never be clipped and the CTA can never be pushed out. An
+/// earlier revision locked the height and let the text flex, which traded a
+/// visible overflow stripe for silent mid-glyph clipping — a worse failure,
+/// because nothing warns you it happened.
 class AppEditorialBanner extends StatelessWidget {
   final String eyebrow;
   final String headline;
@@ -65,7 +72,9 @@ class AppEditorialBanner extends StatelessWidget {
   final String? ctaLabel;
   final VoidCallback? onTap;
   final String? imageUrl;
-  final double height;
+
+  /// Floor for the banner's height. Content taller than this wins.
+  final double minHeight;
 
   const AppEditorialBanner({
     super.key,
@@ -75,8 +84,35 @@ class AppEditorialBanner extends StatelessWidget {
     this.ctaLabel,
     this.onTap,
     this.imageUrl,
-    this.height = 190,
+    this.minHeight = 190,
   });
+
+  /// Proportion of the banner given to copy; the rest carries the photograph.
+  static const int _copyFlex = 6;
+  static const int _imageFlex = 4;
+
+  /// Screen width below which the headline starts stepping down, and the
+  /// width at which it reaches full size.
+  static const double _narrowScreen = 320;
+  static const double _comfortableScreen = 390;
+
+  /// The headline never shrinks below this — past it the editorial voice is
+  /// lost and wrapping is the better trade.
+  static const double _minHeadlineSize = 24;
+
+  /// Display size for the current screen.
+  ///
+  /// Derived from [MediaQuery] rather than a [LayoutBuilder]: this subtree
+  /// sits under an [IntrinsicHeight], which has to query its children's
+  /// intrinsic dimensions, and a LayoutBuilder cannot answer that — the
+  /// combination throws during layout.
+  double _headlineSize(BuildContext context, double fullSize) {
+    final width = MediaQuery.sizeOf(context).width;
+    final t = ((width - _narrowScreen) /
+            (_comfortableScreen - _narrowScreen))
+        .clamp(0.0, 1.0);
+    return _minHeadlineSize + (fullSize - _minHeadlineSize) * t;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,86 +121,103 @@ class AppEditorialBanner extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: isWide ? height + 40 : height,
+        // A floor, not a fixed height — see the sizing contract above.
+        constraints: BoxConstraints(
+          minHeight: isWide ? minHeight + 40 : minHeight,
+        ),
         clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(
           gradient: AppPalette.bannerWash,
           borderRadius: AppRadii.card,
         ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 6,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      eyebrow.toUpperCase(),
-                      style: AppType.eyebrow.copyWith(
-                        color: AppPalette.accent,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      headline,
-                      style: AppType.displayLarge.responsive(context),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (body != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        body!,
-                        style: AppType.bodySmall,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    if (ctaLabel != null) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            ctaLabel!.toUpperCase(),
-                            style: AppType.eyebrow.copyWith(
-                              color: AppPalette.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.xxs + 2),
-                          const Icon(
-                            Icons.arrow_forward,
-                            size: 12,
-                            color: AppPalette.textPrimary,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 4,
-              child: SizedBox.expand(
+        // IntrinsicHeight lets the copy column drive the height while the
+        // photograph stretches to match it, so the two panels stay flush
+        // whatever the copy length. Cheap here: one row, two children.
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: _copyFlex, child: _buildCopy(context)),
+              Expanded(
+                flex: _imageFlex,
                 child: imageUrl == null || imageUrl!.isEmpty
                     ? const ColoredBox(color: AppPalette.surfaceMuted)
+                    // BoxFit.cover fills the panel without distorting the
+                    // photograph — it crops rather than stretches.
                     : AppImage(url: imageUrl!, cacheWidth: 400),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCopy(BuildContext context) {
+    final base = AppType.displayLarge.responsive(context);
+    final fullSize = base.fontSize ?? 34;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            eyebrow.toUpperCase(),
+            style: AppType.eyebrow.copyWith(color: AppPalette.accent),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Deliberately not wrapped in Flexible: the headline is the one
+          // element that must always render in full. The box grows for it.
+          Text(
+            headline,
+            style: base.copyWith(
+              fontSize: _headlineSize(context, fullSize),
+            ),
+          ),
+
+          if (body != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              body!,
+              style: AppType.bodySmall,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
-        ),
+
+          if (ctaLabel != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  ctaLabel!.toUpperCase(),
+                  style: AppType.eyebrow.copyWith(
+                    color: AppPalette.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xxs + 2),
+                const Icon(
+                  Icons.arrow_forward,
+                  size: 12,
+                  color: AppPalette.textPrimary,
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -4,11 +4,13 @@ import 'package:flutter/services.dart';
 import '../widgets/ds/ds.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  ONBOARDING — four screens of intent, then into sign-in.
+//  ONBOARDING — four screens of intent, then into style preferences.
 //
 //  Each page pairs a full-bleed editorial photograph with a serif promise and
-//  a line of supporting copy. Navigation is unchanged: the final page calls
-//  [OnboardingScreen.onComplete] when supplied, otherwise routes to /login.
+//  a line of supporting copy. The final page calls
+//  [OnboardingScreen.onComplete], which the entry flow in main.dart points at
+//  the style-preferences step. There is no sign-in route to fall back to —
+//  phone/OTP was removed — so onComplete is required rather than optional.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _OnboardingPage {
@@ -62,9 +64,9 @@ const _pages = <_OnboardingPage>[
 ];
 
 class OnboardingScreen extends StatefulWidget {
-  final VoidCallback? onComplete;
+  final VoidCallback onComplete;
 
-  const OnboardingScreen({super.key, this.onComplete});
+  const OnboardingScreen({super.key, required this.onComplete});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -97,13 +99,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _finishOnboarding() {
-    if (widget.onComplete != null) {
-      widget.onComplete!();
-    } else {
-      Navigator.of(context).pushReplacementNamed('/login');
-    }
-  }
+  void _finishOnboarding() => widget.onComplete();
 
   @override
   Widget build(BuildContext context) {

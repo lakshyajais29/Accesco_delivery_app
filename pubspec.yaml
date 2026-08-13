@@ -61,6 +61,7 @@ dependencies:
 
   screenshot: ^3.0.0
   path_provider: ^2.1.2
+  shared_preferences: ^2.3.2      # first-run flag + local style preferences
 
 
 dev_dependencies:

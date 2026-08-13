@@ -1,13 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../widgets/ds/ds.dart';
-import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  final VoidCallback? onComplete;
-  const SplashScreen({super.key, this.onComplete});
+  final VoidCallback onComplete;
+  const SplashScreen({super.key, required this.onComplete});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -17,23 +18,42 @@ class _SplashScreenState extends State<SplashScreen> {
   late VideoPlayerController _controller;
   bool _initialized = false;
 
+  /// Guards against handing control onward twice — the video-ended listener
+  /// and the failsafe timer can otherwise both fire.
+  bool _handedOff = false;
+
+  Timer? _failsafe;
+
+  /// Hard ceiling on how long the splash may hold the app.
+  ///
+  /// The video is the happy path, but a missing asset, a decoder failure or a
+  /// stream that never reports completion would otherwise strand the user on
+  /// the splash forever. Anything past this and we move on regardless.
+  static const _maxSplashDuration = Duration(seconds: 6);
+
   @override
   void initState() {
     super.initState();
 
-    // Hide status bar for full immersive splash
+    // Hide status bar for full immersive splash.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    _failsafe = Timer(_maxSplashDuration, _navigateNext);
 
     _controller = VideoPlayerController.asset('assets/videos/splash_video.mp4')
       ..initialize().then((_) {
         if (!mounted) return;
         setState(() => _initialized = true);
         _controller.setLooping(false);
-        _controller.setVolume(1.0); // muted — splash screens are silent
+        _controller.setVolume(1.0);
         _controller.play();
+      }).catchError((Object error) {
+        // Asset missing or undecodable — skip straight through rather than
+        // holding on a branded still until the failsafe fires.
+        debugPrint('Splash video failed to initialise: $error');
+        _navigateNext();
       });
 
-    // Navigate when video ends
     _controller.addListener(_onVideoProgress);
   }
 
@@ -49,26 +69,25 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
+  /// Hands control to the entry flow.
+  ///
+  /// The splash no longer chooses a destination itself — where a user lands
+  /// depends on whether they've completed style setup, and that decision lives
+  /// in one place (`main.dart`). [onComplete] is therefore required; a splash
+  /// with nowhere to go is a bug, not a state to paper over with a default.
   void _navigateNext() {
-    // Restore system UI before navigating
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (_handedOff) return;
+    _handedOff = true;
+    _failsafe?.cancel();
 
-    if (widget.onComplete != null) {
-      widget.onComplete!();
-    } else {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const OnboardingScreen(),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
-      );
-    }
+    // Restore system UI before navigating.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    widget.onComplete();
   }
 
   @override
   void dispose() {
+    _failsafe?.cancel();
     _controller.removeListener(_onVideoProgress);
     _controller.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:instastyle/models/thrift_model.dart';
+import 'package:instastyle/services/app_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:instastyle/theme/app_theme.dart';
 import 'package:instastyle/widgets/ds/ds.dart';
 import 'package:instastyle/widgets/thrift_marketplace_section.dart';
@@ -423,6 +425,156 @@ void main() {
         ThriftListingStatus.pending,
       );
       expect(ThriftListingStatus.fromJson(null), ThriftListingStatus.pending);
+    });
+  });
+
+  group('AppPreferences first-run flag', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('a fresh install is treated as a first-time user', () async {
+      await AppPreferences.instance.load();
+      // The key is absent — routing must send this user to style setup.
+      expect(AppPreferences.instance.isFirstTimeUser, isTrue);
+    });
+
+    test('completing setup flips the flag and stores the answers', () async {
+      SharedPreferences.setMockInitialValues({});
+      await AppPreferences.instance.load();
+
+      await AppPreferences.instance.completeStyleSetup(
+        sizes: ['S', 'M'],
+        styles: ['Minimal'],
+      );
+
+      expect(AppPreferences.instance.isFirstTimeUser, isFalse);
+      expect(AppPreferences.instance.preferredSizes, ['S', 'M']);
+      expect(AppPreferences.instance.preferredStyles, ['Minimal']);
+    });
+
+    test('reset returns the user to the first-run path', () async {
+      SharedPreferences.setMockInitialValues({
+        'has_completed_style_setup': true,
+      });
+      await AppPreferences.instance.load();
+      expect(AppPreferences.instance.isFirstTimeUser, isFalse);
+
+      await AppPreferences.instance.reset();
+      expect(AppPreferences.instance.isFirstTimeUser, isTrue);
+    });
+  });
+
+  group('Outfit builder reorder semantics', () {
+    /// Mirrors the index adjustment in _InstantOutfitBuilderScreenState._reorder.
+    /// ReorderableListView reports newIndex as if the dragged row were still
+    /// occupying its old slot, so a downward move is off by one without this.
+    List<String> reorder(List<String> items, int oldIndex, int newIndex) {
+      final copy = List<String>.of(items);
+      final target = newIndex > oldIndex ? newIndex - 1 : newIndex;
+      final moved = copy.removeAt(oldIndex);
+      copy.insert(target, moved);
+      return copy;
+    }
+
+    const seed = ['Top', 'Bottom', 'Shoes', 'Accessory'];
+
+    test('moving a piece down lands where the user dropped it', () {
+      // Drag "Top" (0) to sit after "Shoes" — ReorderableListView reports 3.
+      expect(reorder(seed, 0, 3), ['Bottom', 'Shoes', 'Top', 'Accessory']);
+    });
+
+    test('moving a piece up needs no adjustment', () {
+      expect(reorder(seed, 3, 0), ['Accessory', 'Top', 'Bottom', 'Shoes']);
+    });
+
+    test('a no-op drag leaves the layering untouched', () {
+      expect(reorder(seed, 2, 2), seed);
+    });
+  });
+
+  group('Outfit builder price parsing', () {
+    /// Mirrors _rupeesFrom — alternatives carry only a formatted price, so the
+    /// integer the cart needs has to be recovered from the string.
+    int rupeesFrom(String formatted) =>
+        int.tryParse(formatted.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+    test('strips currency and grouping separators', () {
+      expect(rupeesFrom('₹4,800'), 4800);
+      expect(rupeesFrom('₹1,23,456'), 123456);
+      expect(rupeesFrom('₹899'), 899);
+    });
+
+    test('falls back to zero rather than throwing on junk', () {
+      expect(rupeesFrom('—'), 0);
+      expect(rupeesFrom(''), 0);
+    });
+  });
+
+  group('AppEditorialBanner layout', () {
+    // The real campaign copy from home_screen.dart — the longest headline is
+    // what tripped the original clipping bug.
+    const eyebrow = 'The Curation';
+    const headline = 'Shop\nthe Edit';
+    const body = 'Everything our stylists are reaching for this season.';
+    const cta = 'View Edit';
+
+    Widget banner() => const AppEditorialBanner(
+          eyebrow: eyebrow,
+          headline: headline,
+          body: body,
+          ctaLabel: cta,
+        );
+
+    testWidgets('renders every element on a narrow phone without overflow',
+        (tester) async {
+      // 320pt is the narrowest width the design system supports.
+      await tester.pumpWidget(_harness(banner(), size: const Size(320, 640)));
+
+      // A RenderFlex overflow raises an exception in tests, so reaching the
+      // assertions at all proves the layout fits.
+      expect(tester.takeException(), isNull);
+
+      expect(find.text('THE CURATION'), findsOneWidget);
+      expect(find.text(headline), findsOneWidget);
+      expect(find.text(body), findsOneWidget);
+      expect(find.text('VIEW EDIT'), findsOneWidget);
+    });
+
+    testWidgets('the headline is never clipped by its own box', (tester) async {
+      await tester.pumpWidget(_harness(banner(), size: const Size(320, 640)));
+
+      final headlineSize = tester.getSize(find.text(headline));
+      // Two lines of the display face. If the box were constraining the Text
+      // below its natural height — the original bug — this collapses toward
+      // a single line.
+      expect(headlineSize.height, greaterThan(40));
+    });
+
+    testWidgets('grows past its minimum rather than clipping content',
+        (tester) async {
+      await tester.pumpWidget(_harness(banner(), size: const Size(320, 640)));
+
+      final rendered = tester.getSize(find.byType(AppEditorialBanner)).height;
+      expect(rendered, greaterThanOrEqualTo(190));
+    });
+
+    testWidgets('CTA stays visible at the largest permitted text scale',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: MediaQuery(
+            // The app clamps accessibility scaling to 1.3x in main.dart.
+            data: const MediaQueryData(
+              size: Size(320, 640),
+              textScaler: TextScaler.linear(1.3),
+            ),
+            child: Scaffold(body: banner()),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('VIEW EDIT'), findsOneWidget);
     });
   });
 }

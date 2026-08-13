@@ -39,27 +39,27 @@ enum _CatalogFilter { all, men, women, unisex, latestDrops }
 
 extension _FilterPresentation on _CatalogFilter {
   String get label => switch (this) {
-        _CatalogFilter.all => 'Everyday',
-        _CatalogFilter.men => 'Men',
-        _CatalogFilter.women => 'Women',
-        _CatalogFilter.unisex => 'Unisex',
-        _CatalogFilter.latestDrops => 'New In',
-      };
+    _CatalogFilter.all => 'Everyday',
+    _CatalogFilter.men => 'Men',
+    _CatalogFilter.women => 'Women',
+    _CatalogFilter.unisex => 'Unisex',
+    _CatalogFilter.latestDrops => 'New In',
+  };
 
   IconData get icon => switch (this) {
-        _CatalogFilter.all => Icons.auto_awesome_outlined,
-        _CatalogFilter.men => Icons.man_outlined,
-        _CatalogFilter.women => Icons.woman_outlined,
-        _CatalogFilter.unisex => Icons.wc_outlined,
-        _CatalogFilter.latestDrops => Icons.bolt_outlined,
-      };
+    _CatalogFilter.all => Icons.auto_awesome_outlined,
+    _CatalogFilter.men => Icons.man_outlined,
+    _CatalogFilter.women => Icons.woman_outlined,
+    _CatalogFilter.unisex => Icons.wc_outlined,
+    _CatalogFilter.latestDrops => Icons.bolt_outlined,
+  };
 
   ProductGender? get gender => switch (this) {
-        _CatalogFilter.men => ProductGender.men,
-        _CatalogFilter.women => ProductGender.women,
-        _CatalogFilter.unisex => ProductGender.unisex,
-        _ => null,
-      };
+    _CatalogFilter.men => ProductGender.men,
+    _CatalogFilter.women => ProductGender.women,
+    _CatalogFilter.unisex => ProductGender.unisex,
+    _ => null,
+  };
 }
 
 /// Ordering options for the grid. Presentation-only — it sorts the list the
@@ -68,19 +68,19 @@ enum _SortOption { newest, priceLowToHigh, priceHighToLow, trending }
 
 extension _SortLabel on _SortOption {
   String get label => switch (this) {
-        _SortOption.newest => 'Newest',
-        _SortOption.priceLowToHigh => 'Price: Low to High',
-        _SortOption.priceHighToLow => 'Price: High to Low',
-        _SortOption.trending => 'Trending',
-      };
+    _SortOption.newest => 'Newest',
+    _SortOption.priceLowToHigh => 'Price: Low to High',
+    _SortOption.priceHighToLow => 'Price: High to Low',
+    _SortOption.trending => 'Trending',
+  };
 
   /// Compact form for the sort bar, which has room for roughly one word.
   String get shortLabel => switch (this) {
-        _SortOption.newest => 'Newest',
-        _SortOption.priceLowToHigh => 'Price ↑',
-        _SortOption.priceHighToLow => 'Price ↓',
-        _SortOption.trending => 'Trending',
-      };
+    _SortOption.newest => 'Newest',
+    _SortOption.priceLowToHigh => 'Price ↑',
+    _SortOption.priceHighToLow => 'Price ↓',
+    _SortOption.trending => 'Trending',
+  };
 }
 
 /// Campaign banners. Each carries the editorial kicker + serif headline pair
@@ -169,18 +169,14 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
 
-    _entranceCtrl = AnimationController(
-      vsync: this,
-      duration: AppMotion.slow,
-    )..forward();
+    _entranceCtrl = AnimationController(vsync: this, duration: AppMotion.slow)
+      ..forward();
 
     _rebuildCatalogue();
 
     _campaignTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (!mounted) return;
-      setState(
-        () => _campaignIndex = (_campaignIndex + 1) % _campaigns.length,
-      );
+      setState(() => _campaignIndex = (_campaignIndex + 1) % _campaigns.length);
     });
 
     // Hydrate the wishlist so hearts are correct on first paint rather than
@@ -220,8 +216,8 @@ class _HomeScreenState extends State<HomeScreen>
       _filter == _CatalogFilter.latestDrops
           ? CatalogService.getJustDropped()
           : gender == null
-              ? CatalogService.getAll()
-              : CatalogService.getForTab(gender),
+          ? CatalogService.getAll()
+          : CatalogService.getForTab(gender),
     );
   }
 
@@ -399,12 +395,7 @@ class _HomeScreenState extends State<HomeScreen>
           MaterialPageRoute(builder: (_) => const SwipeStyleScreen()),
         );
       case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const InstantOutfitBuilderScreen(),
-          ),
-        );
+        Navigator.push(context, InstantOutfitBuilderScreen.route());
       case 3:
         // The Thrift tab opens the nested ecosystem hub, not the listing grid
         // directly — buying and selling both live behind it.
@@ -413,10 +404,8 @@ class _HomeScreenState extends State<HomeScreen>
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => TrialAtDoorstepScreen(
-              orderId: 'ORDER123',
-              riderId: 'RIDER456',
-            ),
+            builder: (_) =>
+                TrialAtDoorstepScreen(orderId: 'ORDER123', riderId: 'RIDER456'),
           ),
         );
       default:
@@ -538,10 +527,8 @@ class _HomeScreenState extends State<HomeScreen>
                         subtitle: 'Fresh in, minutes ago',
                         products: _justDropped,
                         railKey: 'justDropped',
-                        badgeFor: (p) => const AppBadge(
-                          'New',
-                          tone: AppBadgeTone.accent,
-                        ),
+                        badgeFor: (p) =>
+                            const AppBadge('New', tone: AppBadgeTone.accent),
                         signalFor: (p) => p.droppedMinsAgo > 0
                             ? AppSignalTag(
                                 icon: Icons.bolt,
@@ -558,10 +545,7 @@ class _HomeScreenState extends State<HomeScreen>
                         products: _almostGone,
                         railKey: 'almostGone',
                         badgeFor: (p) => p.originalPriceFormatted != null
-                            ? const AppBadge(
-                                'Sale',
-                                tone: AppBadgeTone.danger,
-                              )
+                            ? const AppBadge('Sale', tone: AppBadgeTone.danger)
                             : null,
                         signalFor: (p) => p.stock > 0
                             ? AppSignalTag(
@@ -636,9 +620,8 @@ class _HomeScreenState extends State<HomeScreen>
                           latitude: _latitude,
                           longitude: _longitude,
                           onExplore: _openThriftMarketplace,
-                          onStoreTap: (store) => _openThriftMarketplace(
-                            storeId: store.id,
-                          ),
+                          onStoreTap: (store) =>
+                              _openThriftMarketplace(storeId: store.id),
                         ),
                       ),
 
@@ -662,8 +645,9 @@ class _HomeScreenState extends State<HomeScreen>
                             sortLabel: _sort.shortLabel,
                             onRefine: _openRefineSheet,
                             onSort: _openSortSheet,
-                            activeFilterCount:
-                                _filter == _CatalogFilter.all ? 0 : 1,
+                            activeFilterCount: _filter == _CatalogFilter.all
+                                ? 0
+                                : 1,
                           ),
                         ),
                       ),
@@ -750,8 +734,15 @@ class _HomeScreenState extends State<HomeScreen>
       extra: AppSpacing.md,
     );
 
+    // Stable keys are essential here, not cosmetic. These slivers are
+    // conditionally present — a rail returns [] when its slice is empty — and
+    // every entry is the same SliverToBoxAdapter type. Without keys, Flutter
+    // matches children positionally, so when one rail disappears it hands the
+    // next rail's ListView the previous rail's State. Any GlobalKey inside
+    // (Hero, Scrollable) then gets reparented into a mismatched slot.
     return [
       SliverToBoxAdapter(
+        key: ValueKey('rail-header-$railKey'),
         child: AppSectionHeader(
           title: title,
           subtitle: subtitle,
@@ -760,6 +751,7 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
       SliverToBoxAdapter(
+        key: ValueKey('rail-body-$railKey'),
         child: RepaintBoundary(
           child: SizedBox(
             height: railHeight,
@@ -771,9 +763,7 @@ class _HomeScreenState extends State<HomeScreen>
               physics: const BouncingScrollPhysics(),
               addAutomaticKeepAlives: false,
               itemCount: products.length,
-              separatorBuilder: (_, __) => const SizedBox(
-                width: AppSpacing.md,
-              ),
+              separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
               itemBuilder: (context, i) {
                 final product = products[i];
                 final heroTag = '$railKey-${product.id}-$i';
@@ -818,30 +808,27 @@ class _HomeScreenState extends State<HomeScreen>
       padding: EdgeInsets.symmetric(horizontal: inset),
       sliver: SliverGrid(
         gridDelegate: AppProductGridDelegate.of(context),
-        delegate: SliverChildBuilderDelegate(
-          (context, i) {
-            final product = _gridItems[i];
-            final heroTag = 'grid-${product.id}-$i';
-            return _WishlistAwareCard(
-              product: product,
-              heroTag: heroTag,
-              badge: product.isNew
-                  ? const AppBadge('New', tone: AppBadgeTone.accent)
-                  : product.originalPriceFormatted != null
-                      ? const AppBadge('Sale', tone: AppBadgeTone.danger)
-                      : null,
-              signal: product.stock < 4
-                  ? AppSignalTag(
-                      icon: Icons.local_fire_department_outlined,
-                      color: AppPalette.danger,
-                      label: 'Only ${product.stock} left',
-                    )
-                  : null,
-              onTap: () => _openProduct(product, heroTag),
-            );
-          },
-          childCount: _gridItems.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, i) {
+          final product = _gridItems[i];
+          final heroTag = 'grid-${product.id}-$i';
+          return _WishlistAwareCard(
+            product: product,
+            heroTag: heroTag,
+            badge: product.isNew
+                ? const AppBadge('New', tone: AppBadgeTone.accent)
+                : product.originalPriceFormatted != null
+                ? const AppBadge('Sale', tone: AppBadgeTone.danger)
+                : null,
+            signal: product.stock < 4
+                ? AppSignalTag(
+                    icon: Icons.local_fire_department_outlined,
+                    color: AppPalette.danger,
+                    label: 'Only ${product.stock} left',
+                  )
+                : null,
+            onTap: () => _openProduct(product, heroTag),
+          );
+        }, childCount: _gridItems.length),
       ),
     );
   }
@@ -864,11 +851,7 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.replay,
-                  size: 15,
-                  color: AppPalette.gold,
-                ),
+                const Icon(Icons.replay, size: 15, color: AppPalette.gold),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
@@ -895,18 +878,15 @@ class _HomeScreenState extends State<HomeScreen>
                 addAutomaticKeepAlives: false,
                 physics: const BouncingScrollPhysics(),
                 itemCount: _reorders.length,
-                separatorBuilder: (_, __) => const SizedBox(
-                  width: AppSpacing.sm,
-                ),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: AppSpacing.sm),
                 itemBuilder: (context, i) {
                   final product = _reorders[i];
                   return SizedBox(
                     width: 92,
                     child: GestureDetector(
-                      onTap: () => _openProduct(
-                        product,
-                        'reorder-${product.id}-$i',
-                      ),
+                      onTap: () =>
+                          _openProduct(product, 'reorder-${product.id}-$i'),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -962,34 +942,34 @@ class _WishlistAwareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: WishlistService.instance,
-      builder: (context, _) {
-        final wishlisted = WishlistService.instance.containsId(product.id);
-        return AppProductCard(
-          name: product.name,
-          subtitle: product.brand,
-          imageUrl: product.defaultImageUrl,
-          price: product.price,
-          originalPrice: product.originalPriceFormatted,
-          heroTag: heroTag,
-          badge: badge,
-          signal: signal,
-          soldOut: product.stock <= 0,
-          isWishlisted: wishlisted,
-          onWishlistToggle: () {
-            WishlistService.instance.toggle(product);
-            AppSnack.show(
-              context,
-              wishlisted
-                  ? '${product.name} removed from wishlist'
-                  : '${product.name} added to wishlist',
-              icon: wishlisted ? Icons.heart_broken_outlined : Icons.favorite,
-            );
-          },
-          onTap: onTap,
+    // The listener is handed to the card so it can scope it to the heart.
+    // Wrapping the whole card here would rebuild its Hero on every wishlist
+    // change — including mid-flight, which corrupts Hero's internal GlobalKey.
+    final wishlisted = WishlistService.instance.containsId(product.id);
+    return AppProductCard(
+      name: product.name,
+      subtitle: product.brand,
+      imageUrl: product.defaultImageUrl,
+      price: product.price,
+      originalPrice: product.originalPriceFormatted,
+      heroTag: heroTag,
+      badge: badge,
+      signal: signal,
+      soldOut: product.stock <= 0,
+      isWishlisted: wishlisted,
+      wishlistListenable: WishlistService.instance,
+      wishlistResolver: () => WishlistService.instance.containsId(product.id),
+      onWishlistToggle: () {
+        WishlistService.instance.toggle(product);
+        AppSnack.show(
+          context,
+          wishlisted
+              ? '${product.name} removed from wishlist'
+              : '${product.name} added to wishlist',
+          icon: wishlisted ? Icons.heart_broken_outlined : Icons.favorite,
         );
       },
+      onTap: onTap,
     );
   }
 }

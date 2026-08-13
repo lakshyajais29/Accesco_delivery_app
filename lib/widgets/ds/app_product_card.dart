@@ -13,7 +13,7 @@ import 'app_shimmer.dart';
 const double kProductImageRatio = 3 / 4;
 
 /// Height of the text block beneath the photo (name + meta + price).
-const double kProductInfoHeight = 66;
+const double kProductInfoHeight = 78;
 
 /// The product card. One implementation serves the home rails, search results,
 /// wishlist, thrift listings and "similar items" — sized by its parent rather
@@ -38,6 +38,21 @@ class AppProductCard extends StatelessWidget {
   final bool isWishlisted;
   final VoidCallback? onWishlistToggle;
 
+  /// Drives the heart's state without rebuilding the rest of the card.
+  ///
+  /// Pass the wishlist service here together with [wishlistResolver] instead
+  /// of wrapping the whole card in a `ListenableBuilder`. That matters beyond
+  /// efficiency: the card contains a [Hero], and Hero reparents its subtree
+  /// into the navigation overlay via an internal `GlobalKey` during a flight.
+  /// Rebuilding the card while that flight is in progress re-inflates the
+  /// same GlobalKey from two places and trips
+  /// `_elements.contains(element)` deep in the framework. Scoping the
+  /// listener to the heart keeps the Hero subtree stable.
+  final Listenable? wishlistListenable;
+
+  /// Reads the current wishlist state when [wishlistListenable] fires.
+  final bool Function()? wishlistResolver;
+
   /// Overlaid at the top-left of the photo — "NEW", "SALE", rank.
   final Widget? badge;
 
@@ -58,6 +73,8 @@ class AppProductCard extends StatelessWidget {
     this.heroTag,
     this.isWishlisted = false,
     this.onWishlistToggle,
+    this.wishlistListenable,
+    this.wishlistResolver,
     this.badge,
     this.signal,
     this.soldOut = false,
@@ -65,11 +82,7 @@ class AppProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget photo = AppImage(
-      url: imageUrl,
-      fit: BoxFit.cover,
-      cacheWidth: 400,
-    );
+    Widget photo = AppImage(url: imageUrl, fit: BoxFit.cover, cacheWidth: 400);
 
     if (heroTag != null) {
       photo = Hero(tag: heroTag!, child: photo);
@@ -83,37 +96,55 @@ class AppProductCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // ── Photograph ────────────────────────────────────────────────
-          AspectRatio(
-            aspectRatio: kProductImageRatio,
-            child: ClipRRect(
-              borderRadius: AppRadii.image,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(color: AppPalette.surfaceMuted, child: photo),
-                  if (soldOut)
-                    const ColoredBox(
-                      color: AppPalette.inkA55,
-                      child: Center(
-                        child: AppBadge('Sold Out', tone: AppBadgeTone.neutral),
+          // Flexible so the photo yields height when the detail block needs
+          // more than kProductInfoHeight — an optional signal line or a large
+          // accessibility text scale both push it over. Without this the
+          // Column overflows by a few pixels and stripes the card.
+          Flexible(
+            child: AspectRatio(
+              aspectRatio: kProductImageRatio,
+              child: ClipRRect(
+                borderRadius: AppRadii.image,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(color: AppPalette.surfaceMuted, child: photo),
+                    if (soldOut)
+                      const ColoredBox(
+                        color: AppPalette.inkA55,
+                        child: Center(
+                          child: AppBadge(
+                            'Sold Out',
+                            tone: AppBadgeTone.neutral,
+                          ),
+                        ),
                       ),
-                    ),
-                  if (badge != null)
-                    Positioned(
-                      top: AppSpacing.xs,
-                      left: AppSpacing.xs,
-                      child: badge!,
-                    ),
-                  if (onWishlistToggle != null)
-                    Positioned(
-                      top: AppSpacing.xxs,
-                      right: AppSpacing.xxs,
-                      child: _WishlistHeart(
-                        isWishlisted: isWishlisted,
-                        onToggle: onWishlistToggle!,
+                    if (badge != null)
+                      Positioned(
+                        top: AppSpacing.xs,
+                        left: AppSpacing.xs,
+                        child: badge!,
                       ),
-                    ),
-                ],
+                    if (onWishlistToggle != null)
+                      Positioned(
+                        top: AppSpacing.xxs,
+                        right: AppSpacing.xxs,
+                        child: wishlistListenable == null
+                            ? _WishlistHeart(
+                                isWishlisted: isWishlisted,
+                                onToggle: onWishlistToggle!,
+                              )
+                            : ListenableBuilder(
+                                listenable: wishlistListenable!,
+                                builder: (context, _) => _WishlistHeart(
+                                  isWishlisted:
+                                      wishlistResolver?.call() ?? isWishlisted,
+                                  onToggle: onWishlistToggle!,
+                                ),
+                              ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -216,8 +247,9 @@ class _WishlistHeart extends StatelessWidget {
               isWishlisted ? Icons.favorite : Icons.favorite_border,
               key: ValueKey(isWishlisted),
               size: 16,
-              color:
-                  isWishlisted ? AppPalette.danger : AppPalette.textSecondary,
+              color: isWishlisted
+                  ? AppPalette.danger
+                  : AppPalette.textSecondary,
             ),
           ),
         ),
