@@ -29,18 +29,25 @@ class AppBrandBar extends StatelessWidget implements PreferredSizeWidget {
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.page(context)),
           child: Row(
             children: [
-              GestureDetector(
-                onTap: onLogoTap,
-                child: RichText(
-                  text: TextSpan(
-                    style: AppType.wordmark,
-                    children: const [
-                      TextSpan(text: 'Insta'),
-                      TextSpan(
-                        text: 'Style',
-                        style: TextStyle(color: AppPalette.accent),
-                      ),
-                    ],
+              // Flexible, not fixed: on a 320pt phone at a large text scale
+              // the wordmark plus three icon actions exceed the bar, and the
+              // wordmark is the element that can give.
+              Flexible(
+                child: GestureDetector(
+                  onTap: onLogoTap,
+                  child: RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      style: AppType.wordmark,
+                      children: const [
+                        TextSpan(text: 'Insta'),
+                        TextSpan(
+                          text: 'Style',
+                          style: TextStyle(color: AppPalette.accent),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

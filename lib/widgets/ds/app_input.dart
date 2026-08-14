@@ -99,6 +99,7 @@ class AppTextField extends StatelessWidget {
 class AppSearchBar extends StatelessWidget {
   final String hint;
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onTap;
@@ -107,10 +108,20 @@ class AppSearchBar extends StatelessWidget {
   final VoidCallback? onClear;
   final List<Widget> trailing;
 
+  /// Field fill. Defaults to the white card surface; pass
+  /// [AppPalette.surfaceMuted] for the warm, borderless treatment used on the
+  /// home and thrift storefronts.
+  final Color? fillColor;
+
+  /// Hairline colour. Pass `Colors.transparent` to drop the outline entirely
+  /// when the fill alone carries the shape.
+  final Color? borderColor;
+
   const AppSearchBar({
     super.key,
     this.hint = 'Search for pieces, brands, looks…',
     this.controller,
+    this.focusNode,
     this.onChanged,
     this.onSubmitted,
     this.onTap,
@@ -118,6 +129,8 @@ class AppSearchBar extends StatelessWidget {
     this.autofocus = false,
     this.onClear,
     this.trailing = const [],
+    this.fillColor,
+    this.borderColor,
   });
 
   @override
@@ -125,9 +138,9 @@ class AppSearchBar extends StatelessWidget {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: AppPalette.surface,
+        color: fillColor ?? AppPalette.surface,
         borderRadius: AppRadii.chip,
-        border: Border.all(color: AppPalette.line),
+        border: Border.all(color: borderColor ?? AppPalette.line),
       ),
       child: Row(
         children: [
@@ -137,6 +150,7 @@ class AppSearchBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
               onTap: onTap,

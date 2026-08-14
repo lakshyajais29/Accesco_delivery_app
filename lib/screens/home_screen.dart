@@ -8,6 +8,7 @@ import '../services/catalog_service.dart';
 import '../services/wishlist_service.dart';
 import '../widgets/ds/ds.dart';
 import '../widgets/thrift_marketplace_section.dart';
+import 'browse_screen.dart';
 import 'instant_outfit_builder_screen.dart';
 import 'cart_screen.dart';
 import 'product_detail_screen.dart';
@@ -16,6 +17,7 @@ import 'profile_screen.dart';
 import 'thrift/thrift_home_screen.dart';
 import 'swipe_style_screen.dart';
 import 'trial_at_doorstep_screen.dart';
+import 'virtual_try_on_screen.dart';
 import 'wishlist_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,18 +25,23 @@ import 'wishlist_screen.dart';
 //
 //  Structure, top to bottom:
 //    1. Brand bar          — wordmark + wishlist/bag actions
-//    2. Editorial banner   — rotating campaign card, keyed to the category
-//    3. Category row       — circular taxonomy tiles that drive the filter
-//    4. Curated rails      — Just Dropped / Almost Gone / Trending / Vibe Check
-//    5. The Edit           — refine + sort bar, result count, product grid
-//    6. Quick reorder      — recent purchases, one tap away
+//    2. Search bar         — free-text search + visual search camera
+//    3. Category avatars   — circular photographic department tiles
+//    4. Editorial banner   — rotating campaign card, keyed to the category
+//    5. Curated rails      — Just Dropped / Almost Gone / Trending / Vibe Check
+//    6. Thrift Marketplace — promotional banner into the resale ecosystem
+//    7. The Edit           — refine + sort bar, result count, product grid
+//    8. Quick reorder      — recent purchases, one tap away
 //
 //  All catalogue queries, filter semantics and navigation targets are the
 //  originals; only the presentation layer changed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Catalogue filters. Unchanged from the original implementation — the tiles
-/// in the category row map onto these exact cases.
+/// Catalogue filters. Unchanged from the original implementation.
+///
+/// The icon row that used to drive these is gone; the department avatars at
+/// the top of the page and the Refine sheet now set them, and they still cut
+/// every rail and the grid exactly as before.
 enum _CatalogFilter { all, men, women, unisex, latestDrops }
 
 extension _FilterPresentation on _CatalogFilter {
@@ -44,14 +51,6 @@ extension _FilterPresentation on _CatalogFilter {
     _CatalogFilter.women => 'Women',
     _CatalogFilter.unisex => 'Unisex',
     _CatalogFilter.latestDrops => 'New In',
-  };
-
-  IconData get icon => switch (this) {
-    _CatalogFilter.all => Icons.auto_awesome_outlined,
-    _CatalogFilter.men => Icons.man_outlined,
-    _CatalogFilter.women => Icons.woman_outlined,
-    _CatalogFilter.unisex => Icons.wc_outlined,
-    _CatalogFilter.latestDrops => Icons.bolt_outlined,
   };
 
   ProductGender? get gender => switch (this) {
@@ -128,6 +127,58 @@ const _campaigns = <_Campaign>[
   ),
 ];
 
+/// A photographic department tile in the circular avatar row under the search
+/// bar.
+///
+/// Two behaviours, one row. Departments the catalogue already models map onto
+/// a [_CatalogFilter] and re-cut the page in place — the same semantics as the
+/// icon taxonomy row further down, so the two controls never disagree.
+/// Departments the catalogue has no gender for (Kids, Beauty, Home) hand their
+/// label to [BrowseScreen] as a search term instead of pretending to filter.
+class _Department {
+  final String label;
+  final String imageUrl;
+
+  /// Non-null when this department maps onto an existing catalogue filter.
+  final _CatalogFilter? filter;
+
+  const _Department({
+    required this.label,
+    required this.imageUrl,
+    this.filter,
+  });
+}
+
+const _departments = <_Department>[
+  _Department(
+    label: 'Women',
+    filter: _CatalogFilter.women,
+    imageUrl:
+        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
+  ),
+  _Department(
+    label: 'Men',
+    filter: _CatalogFilter.men,
+    imageUrl:
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
+  ),
+  _Department(
+    label: 'Kids',
+    imageUrl:
+        'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=200&q=80',
+  ),
+  _Department(
+    label: 'Beauty',
+    imageUrl:
+        'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=80',
+  ),
+  _Department(
+    label: 'Home',
+    imageUrl:
+        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=200&q=80',
+  ),
+];
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -144,6 +195,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   Timer? _campaignTimer;
   late final AnimationController _entranceCtrl;
+
+  // ── Search ────────────────────────────────────────────────────────────
+  // The bar is a live field rather than a read-only tap target: typing keeps
+  // the clear affordance honest, and submitting hands the term to
+  // [BrowseScreen], which owns the actual search + filter UI.
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
 
   // ── Location ──────────────────────────────────────────────────────────
   // Drives the Thrift Marketplace's nearby-store rail. Stays null until a fix
@@ -195,6 +253,8 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     _campaignTimer?.cancel();
     _entranceCtrl.dispose();
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -369,11 +429,58 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  // ── Search ──────────────────────────────────────────────────────────────
+  /// Hands the typed term to the search screen. Empty input is a no-op rather
+  /// than a push onto an unfiltered grid.
+  void _submitSearch(String raw) {
+    final query = raw.trim();
+    if (query.isEmpty) return;
+    _searchFocus.unfocus();
+    Navigator.push(context, BrowseScreen.route(initialQuery: query));
+  }
+
+  void _clearSearch() {
+    _searchCtrl.clear();
+    setState(() {}); // Drops the clear affordance.
+  }
+
+  /// The camera in the search bar — search by picture rather than by word.
+  void _openVisualSearch() {
+    _searchFocus.unfocus();
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const VirtualTryOnScreen(),
+        transitionDuration: AppMotion.slow,
+        reverseTransitionDuration: AppMotion.normal,
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: AppMotion.enter),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  /// A department tile in the avatar row. See [_Department] for why the two
+  /// branches differ.
+  void _openDepartment(_Department department) {
+    final filter = department.filter;
+    if (filter != null) {
+      _selectFilter(filter);
+      return;
+    }
+    Navigator.push(
+      context,
+      BrowseScreen.route(initialQuery: department.label),
+    );
+  }
+
   /// Enters the nested thrift ecosystem.
   ///
   /// Everything resale — browsing, listing, seller tools — lives inside
   /// [ThriftHomeScreen] rather than on the main navigation, so this is the
-  /// single door into that subtree.
+  /// single door into that subtree. [ThriftHomeScreen.route] is the app's
+  /// standard fade transition.
   void _openThriftMarketplace({String? storeId}) {
     Navigator.push(context, ThriftHomeScreen.route());
   }
@@ -478,13 +585,60 @@ class _HomeScreenState extends State<HomeScreen>
                       parent: AlwaysScrollableScrollPhysics(),
                     ),
                     slivers: [
-                      // ── 1. Campaign banner ─────────────────────────────
+                      // ── 1. Search ──────────────────────────────────────
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(
                           inset,
-                          AppSpacing.xs,
+                          AppSpacing.sm,
                           inset,
-                          AppSpacing.lg,
+                          AppSpacing.md,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: AppSearchBar(
+                            hint: 'Search for products, brands & more',
+                            controller: _searchCtrl,
+                            focusNode: _searchFocus,
+                            fillColor: AppPalette.surfaceMuted,
+                            borderColor: Colors.transparent,
+                            onChanged: (value) {
+                              // Only rebuild on the empty↔non-empty edge —
+                              // the clear icon is the sole thing that
+                              // depends on the text.
+                              if (value.isEmpty || value.length == 1) {
+                                setState(() {});
+                              }
+                            },
+                            onSubmitted: _submitSearch,
+                            onClear:
+                                _searchCtrl.text.isEmpty ? null : _clearSearch,
+                            trailing: [
+                              _SearchCameraButton(onTap: _openVisualSearch),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // ── 2. Department avatars ──────────────────────────
+                      SliverToBoxAdapter(
+                        child: RepaintBoundary(
+                          child: _DepartmentRow(
+                            departments: _departments,
+                            activeFilter: _filter,
+                            onSelected: _openDepartment,
+                          ),
+                        ),
+                      ),
+
+                      // ── 3. Campaign banner ─────────────────────────────
+                      // No bottom inset: the section header that follows
+                      // brings its own top padding, which is the same rhythm
+                      // every other section break uses.
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                          inset,
+                          AppSpacing.md,
+                          inset,
+                          0,
                         ),
                         sliver: SliverToBoxAdapter(
                           child: AnimatedSwitcher(
@@ -504,24 +658,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
 
-                      // ── 2. Category taxonomy ───────────────────────────
-                      SliverToBoxAdapter(
-                        child: RepaintBoundary(
-                          child: AppCategoryRow(
-                            items: [
-                              for (final filter in _CatalogFilter.values)
-                                (icon: filter.icon, label: filter.label),
-                            ],
-                            selectedIndex: _CatalogFilter.values.indexOf(
-                              _filter,
-                            ),
-                            onSelected: (i) =>
-                                _selectFilter(_CatalogFilter.values[i]),
-                          ),
-                        ),
-                      ),
-
-                      // ── 3. Curated rails ───────────────────────────────
+                      // ── 4. Curated rails ───────────────────────────────
                       ..._buildRail(
                         title: 'Just Dropped',
                         subtitle: 'Fresh in, minutes ago',
@@ -591,7 +728,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
 
-                      // ── 3b. Style Circle ───────────────────────────────
+                      // ── 6. Style Circle ────────────────────────────────
                       // The community feed sits after the curated rails: it
                       // is discovery by people rather than by merchandising.
                       SliverToBoxAdapter(
@@ -611,7 +748,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
 
-                      // ── 4. Thrift Marketplace ──────────────────────────
+                      // ── 7. Thrift Marketplace ──────────────────────────
                       // Sits after the discovery rails and before the main
                       // grid: browsing intent is already warm here, but the
                       // user hasn't committed to the catalogue yet.
@@ -625,7 +762,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
 
-                      // ── 5. The Edit — refine, count, grid ──────────────
+                      // ── 8. The Edit — refine, count, grid ──────────────
                       const SliverToBoxAdapter(
                         child: AppSectionHeader(
                           title: 'The Edit',
@@ -664,7 +801,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       _buildGrid(inset),
 
-                      // ── 6. Quick reorder ───────────────────────────────
+                      // ── 9. Quick reorder ───────────────────────────────
                       SliverToBoxAdapter(child: _buildQuickReorder()),
                       SliverToBoxAdapter(
                         child: SizedBox(height: AppSpacing.xxl),
@@ -914,6 +1051,144 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The camera at the trailing edge of the search bar — visual search.
+class _SearchCameraButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _SearchCameraButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Search by photo',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: const Padding(
+          // Generous horizontal padding so the 20pt glyph still clears the
+          // 44pt minimum tap target inside a 46pt-tall bar.
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: Icon(
+            Icons.photo_camera_outlined,
+            size: 20,
+            color: AppPalette.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The horizontally scrolling row of circular department avatars that sits
+/// under the search bar.
+class _DepartmentRow extends StatelessWidget {
+  final List<_Department> departments;
+  final _CatalogFilter activeFilter;
+  final ValueChanged<_Department> onSelected;
+
+  const _DepartmentRow({
+    required this.departments,
+    required this.activeFilter,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 96,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.page(context)),
+        itemCount: departments.length,
+        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+        itemBuilder: (context, i) {
+          final department = departments[i];
+          return _DepartmentAvatar(
+            department: department,
+            // Only filter-backed departments can read as selected; the
+            // Browse-backed ones navigate away, so they have no resting
+            // state to show.
+            selected: department.filter != null &&
+                department.filter == activeFilter,
+            onTap: () => onSelected(department),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DepartmentAvatar extends StatelessWidget {
+  final _Department department;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DepartmentAvatar({
+    required this.department,
+    required this.selected,
+    required this.onTap,
+  });
+
+  static const double _diameter = 62;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: department.label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 70,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: AppMotion.fast,
+                curve: AppMotion.standard,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? AppPalette.accent : AppPalette.line,
+                    width: selected ? 1.5 : 1,
+                  ),
+                ),
+                child: ClipOval(
+                  child: AppImage(
+                    url: department.imageUrl,
+                    width: _diameter,
+                    height: _diameter,
+                    cacheWidth: 140,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                department.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppType.bodySmall.copyWith(
+                  fontSize: 11.5,
+                  color: selected
+                      ? AppPalette.textPrimary
+                      : AppPalette.textSecondary,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -168,7 +168,10 @@ class _ThriftMarketplaceSectionState extends State<ThriftMarketplaceSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        ThriftMarketplaceBanner(onTap: widget.onExplore),
+        ThriftMarketplaceBanner(
+          onTap: widget.onExplore,
+          onExplore: widget.onExplore,
+        ),
         if (_hasLocation)
           _NearbyStoresRail(
             future: _storesFuture!,
@@ -182,9 +185,20 @@ class _ThriftMarketplaceSectionState extends State<ThriftMarketplaceSection> {
 
 /// A 1:1 implementation of Figma node `578:6842`.
 class ThriftMarketplaceBanner extends StatelessWidget {
+  /// Tapping anywhere on the card.
   final VoidCallback onTap;
 
-  const ThriftMarketplaceBanner({super.key, required this.onTap});
+  /// Tapping the "EXPLORE NOW" pill specifically. Falls back to [onTap] when
+  /// omitted — the pill sits inside the card's own gesture area, so it is
+  /// never dead either way; this exists so the button can be given its own
+  /// hit target, semantics and press feedback.
+  final VoidCallback? onExplore;
+
+  const ThriftMarketplaceBanner({
+    super.key,
+    required this.onTap,
+    this.onExplore,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -300,16 +314,24 @@ class ThriftMarketplaceBanner extends StatelessWidget {
 
   /// The ink pill (nodes 578:6857–59).
   Widget _buildExploreButton() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: _Spec.buttonPaddingX,
-        vertical: _Spec.buttonPaddingY,
-      ),
-      decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      label: 'Explore the thrift marketplace',
+      child: Material(
         color: AppPalette.ink,
         borderRadius: BorderRadius.circular(_Spec.buttonRadius),
+        child: InkWell(
+          onTap: onExplore ?? onTap,
+          borderRadius: BorderRadius.circular(_Spec.buttonRadius),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: _Spec.buttonPaddingX,
+              vertical: _Spec.buttonPaddingY,
+            ),
+            child: Text('EXPLORE NOW', style: _BannerType.button),
+          ),
+        ),
       ),
-      child: Text('EXPLORE NOW', style: _BannerType.button),
     );
   }
 }
