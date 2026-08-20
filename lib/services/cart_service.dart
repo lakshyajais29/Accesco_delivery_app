@@ -6,8 +6,13 @@ class CartService {
   CartService._();
   static final CartService instance = CartService._();
 
-  final _db   = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  // Lazy, not a field initializer. These `.instance` calls throw
+  // synchronously when Firebase.initializeApp() has not run or has failed,
+  // and a throw from a field initializer escapes the *constructor* — before
+  // any method's try/catch can see it. Behind a getter the same throw lands
+  // inside the guarded block of whichever method touched it.
+  FirebaseFirestore get _db   => FirebaseFirestore.instance;
+  FirebaseAuth      get _auth => FirebaseAuth.instance;
 
   Future<String> get _uid async {
     final User? user = _auth.currentUser;

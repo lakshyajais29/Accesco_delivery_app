@@ -22,7 +22,17 @@ Future<void> main() async {
   // Full immersive during splash; restored once it completes.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  await Firebase.initializeApp();
+  // Guarded so the comment below is actually true. A missing or misplaced
+  // google-services.json, a revoked API key, or a Play Services failure all
+  // make this throw — and unguarded it takes the app down *before*
+  // runApp(), producing a process that dies on launch with no UI at all.
+  // Every Firebase-backed service already degrades to a signed-out state,
+  // so browsing survives this.
+  try {
+    await Firebase.initializeApp();
+  } catch (error, stack) {
+    debugPrint('Firebase.initializeApp() failed: $error\n$stack');
+  }
 
   // Both must resolve before the first frame: preferences decide where the
   // splash sends the user, and a uid must exist before the cart, wishlist or

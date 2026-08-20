@@ -38,6 +38,10 @@ dependencies:
   flutter_svg: ^2.0.10
   # Camera capture + gallery selection for thrift listing photos.
   image_picker: ^1.1.2
+  # Pure-Dart JPEG encoder. Used by ImageUploadService to re-encode photos
+  # after downscaling, so a 12 MB phone original never reaches Storage or the
+  # try-on API at full size.
+  image: ^4.8.0
 
   firebase_core: ^3.4.0
   cloud_firestore: ^5.0.0

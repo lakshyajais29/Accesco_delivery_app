@@ -18,16 +18,34 @@ class AuthService {
 
   static final AuthService instance = AuthService._();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // Lazy, not a field initializer. These `.instance` calls throw
+  // synchronously when Firebase.initializeApp() has not run or has failed,
+  // and a throw from a field initializer escapes the *constructor* — before
+  // any method's try/catch can see it. Behind a getter the same throw lands
+  // inside the guarded block of whichever method touched it.
+  FirebaseAuth get _auth => FirebaseAuth.instance;
 
-  User? get currentUser => _auth.currentUser;
+  /// The current user, or null when signed out *or* when Firebase is
+  /// unavailable.
+  ///
+  /// Never throws. This is read from `build()` methods, where an exception
+  /// is an immediate red screen rather than a catchable failure — so a
+  /// missing Firebase app has to read as "signed out", not as a crash.
+  User? get currentUser {
+    try {
+      return _auth.currentUser;
+    } catch (error) {
+      debugPrint('AuthService: Firebase unavailable — $error');
+      return null;
+    }
+  }
 
-  String? get uid => _auth.currentUser?.uid;
+  String? get uid => currentUser?.uid;
 
-  bool get isSignedIn => _auth.currentUser != null;
+  bool get isSignedIn => currentUser != null;
 
   /// True when the session is anonymous rather than a linked account.
-  bool get isAnonymous => _auth.currentUser?.isAnonymous ?? false;
+  bool get isAnonymous => currentUser?.isAnonymous ?? false;
 
   /// Ensures a signed-in user exists, creating an anonymous one if needed.
   ///
@@ -36,7 +54,7 @@ class AuthService {
   /// still be able to browse the catalogue. Features that genuinely need a uid
   /// already guard for its absence.
   Future<User?> ensureSignedIn() async {
-    final existing = _auth.currentUser;
+    final existing = currentUser;
     if (existing != null) return existing;
 
     try {
@@ -65,7 +83,7 @@ class AuthService {
   Future<UserCredential?> linkPhoneCredential(
     PhoneAuthCredential credential,
   ) async {
-    final user = _auth.currentUser;
+    final user = currentUser;
     if (user == null) return null;
     try {
       return await user.linkWithCredential(credential);
@@ -75,5 +93,14 @@ class AuthService {
     }
   }
 
-  Future<void> signOut() => _auth.signOut();
+  /// Signs out. Swallows a Firebase-unavailable failure: a caller asking
+  /// to sign out of a session that cannot exist has already got what it
+  /// wanted.
+  Future<void> signOut() async {
+    try {
+      await _auth.signOut();
+    } catch (error) {
+      debugPrint('AuthService.signOut failed: $error');
+    }
+  }
 }

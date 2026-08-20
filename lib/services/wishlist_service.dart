@@ -73,11 +73,30 @@ class WishlistService extends ChangeNotifier {
     unawaited(_persistToggle(product, added: !wasWishlisted));
   }
 
+  /// The signed-in user's id, or null when there is no usable auth state.
+  ///
+  /// Reading `FirebaseAuth.instance` is not a plain property access: it builds
+  /// the plugin handle and throws outright if Firebase was never configured or
+  /// the platform channel is missing. Both callers below are `async`, so an
+  /// uncaught throw here would not surface at this line — it would come back
+  /// as a rejected future at the *caller*, which for [toggle] is an
+  /// `unawaited` call and therefore an unhandled async error that fails the
+  /// enclosing screen. Persistence is best-effort: a user with no reachable
+  /// backend still gets a working in-memory wishlist for the session.
+  String? _currentUid() {
+    try {
+      return FirebaseAuth.instance.currentUser?.uid;
+    } catch (error) {
+      debugPrint('WishlistService: auth unavailable — $error');
+      return null;
+    }
+  }
+
   /// Loads the signed-in user's wishlist. Safe to call more than once; the
   /// network fetch only happens on the first call unless [force] is set.
   Future<void> load({bool force = false}) async {
     if (_hasLoaded && !force) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = _currentUid();
     if (uid == null) return;
 
     _isSyncing = true;
@@ -123,16 +142,18 @@ class WishlistService extends ChangeNotifier {
     ParentProduct product, {
     required bool added,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = _currentUid();
     if (uid == null) return; // Guest session — in-memory only.
 
-    final doc = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('wishlist')
-        .doc(product.id);
-
     try {
+      // Built inside the try: reaching `FirebaseFirestore.instance` throws
+      // the same way the auth read does when Firebase is unconfigured.
+      final doc = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('wishlist')
+          .doc(product.id);
+
       if (added) {
         await doc.set({
           'productId': product.id,

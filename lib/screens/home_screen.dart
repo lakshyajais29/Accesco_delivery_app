@@ -497,10 +497,7 @@ class _HomeScreenState extends State<HomeScreen>
     // mirrors the original navigation exactly.
     switch (index) {
       case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SwipeStyleScreen()),
-        );
+        Navigator.push(context, SwipeStyleScreen.route());
       case 2:
         Navigator.push(context, InstantOutfitBuilderScreen.route());
       case 3:

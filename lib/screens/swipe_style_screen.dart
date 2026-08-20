@@ -1,1915 +1,1567 @@
-import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../models/product_model.dart';
+import '../services/cart_service.dart';
+import '../services/catalog_service.dart';
+import '../services/wishlist_service.dart';
 import '../widgets/ds/ds.dart';
-import 'sku_catalog.dart'; // ── SKU ── catalogue + CartPayload
-import 'package:instastyle/services/cart_service.dart';
-import 'virtual_try_on_screen.dart';
+import 'cart_screen.dart';
+import 'instant_outfit_builder_screen.dart';
+import 'product_detail_screen.dart';
+import 'thrift/thrift_home_screen.dart';
+import 'trial_at_doorstep_screen.dart';
+import 'vibe_check_screen.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SKU INTEGRATION (additive — NO UI/UX change)
-// Resolves a catalogue parentId to a concrete child-variant CartPayload using
-// the first in-stock variant as the silent default selection (no picker shown,
-// so the swipe flow is untouched). The card's own displayed price is kept as
-// the unit price so nothing visible changes. Falls back to a synthesized
-// payload when the parent isn't in SkuCatalog yet (e.g. FSR-MK lehenga).
-// ═══════════════════════════════════════════════════════════════════════════
-CartPayload _skuPayloadFor({
-  required String? parentId,
-  required String name,
-  required String brand,
-  required int unitPriceInPaise, // price shown on THIS card — kept as-is
-  required String imageUrl,
-  int quantity = 1,
-}) {
-  String variantSku       = '${parentId ?? 'SKU'}-DEFAULT';
-  String size             = 'One Size';
-  String colorName        = '—';
-  String colorHex         = '#888888';
-  String resolvedParentId = parentId ?? name;
+// ─────────────────────────────────────────────────────────────────────────────
+//  SWIPESTYLE — the deck.
+//
+//  Structure, top to bottom:
+//    1. Header        — back, wordmark, bag with a live count
+//    2. Filter row    — Filters · Sort · Brand · Price · More, all live
+//    3. Status pill   — how many pieces are left in the current deck
+//    4. Card stack    — three deep; the top card is draggable
+//    5. Console       — Pass · Undo · Add to Bag
+//    6. Cart nudge    — floating pill with thumbnails of what you kept
+//    7. Bottom nav    — the app's own five-tab bar, untouched
+//
+//  The deck is built from [CatalogService], the same in-memory catalogue the
+//  rest of the app reads, so the brand/price/category filters operate on real
+//  inventory and the card can show a true discount.
+//
+//  Swipe semantics:
+//    ← left   pass
+//    → right  keep — adds the piece to the bag via [CartService]
+//    ↑ up     vibe check — asks friends, opens [VibeCheckScreen]
+//  Every one of them is undoable; see [_undo].
+// ─────────────────────────────────────────────────────────────────────────────
 
-  if (parentId != null) {
-    final parent = SkuCatalog.get(parentId);
-    if (parent != null && parent.variantMap.isNotEmpty) {
-      ProductVariant variant = parent.variantMap.values.first;
-      for (final v in parent.variantMap.values) {
-        if (v.inStock) { variant = v; break; }
-      }
-      variantSku       = variant.sku;
-      size             = variant.size;
-      colorName        = variant.colorName;
-      colorHex         = variant.colorHex;
-      resolvedParentId = parent.id;
-    }
-  }
+enum _SwipeDir { pass, like, vibe }
 
-  return CartPayload(
-    parentId         : resolvedParentId,
-    variantSku       : variantSku,
-    productName      : name,
-    brand            : brand,
-    size             : size,
-    colorName        : colorName,
-    colorHex         : colorHex,
-    quantity         : quantity,
-    unitPriceInPaise : unitPriceInPaise,
-    imageUrl         : imageUrl,
-  );
+/// Ordering for the deck. Mirrors the home screen's options so the two
+/// surfaces speak the same language.
+enum _SortOption { newest, priceLowToHigh, priceHighToLow, trending }
+
+extension _SortLabel on _SortOption {
+  String get label => switch (this) {
+    _SortOption.newest => 'Newest',
+    _SortOption.priceLowToHigh => 'Price: Low to High',
+    _SortOption.priceHighToLow => 'Price: High to Low',
+    _SortOption.trending => 'Trending',
+  };
+
+  /// Compact form for the filter pill, which has room for about one word.
+  String get shortLabel => switch (this) {
+    _SortOption.newest => 'Sort',
+    _SortOption.priceLowToHigh => 'Price ↑',
+    _SortOption.priceHighToLow => 'Price ↓',
+    _SortOption.trending => 'Trending',
+  };
 }
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
-/// Screen-local aliases onto the design system.
-///
-/// The names are the originals so the layout code below is untouched, but each
-/// now resolves to an [AppPalette] token — which is what re-skins this screen
-/// to the editorial language in one place. Add nothing new here: new colours
-/// belong in [AppPalette].
-class _C {
-  static const white       = AppPalette.surface;
-  static const bg          = AppPalette.canvas;
-  static const cardBg      = AppPalette.surfaceMuted;
-  static const grey100     = AppPalette.surfaceMuted;
-  static const grey150     = AppPalette.line;
-  static const grey300     = AppPalette.lineStrong;
-  static const grey500     = AppPalette.textTertiary;
-  static const grey700     = AppPalette.textSecondary;
-  static const dark        = AppPalette.ink;
-  static const magenta     = AppPalette.accent;
-  static const sale        = AppPalette.danger;
-  static const amber       = AppPalette.warning;
-  static const ivory       = AppPalette.textOnDark;
-  static const brown       = AppPalette.accent;
-  static const brownDark   = AppPalette.accentDeep;
-  static const greenBudget = AppPalette.success;
-  static const navBg       = AppPalette.ink;
+/// A price bracket for the Price pill. Bounds are in paise, inclusive of
+/// [minPaise] and exclusive of [maxPaise].
+class _PriceBand {
+  final String label;
+  final int minPaise;
+  final int maxPaise;
 
-  static const fomoRed     = AppPalette.danger;
-  static const brandTan    = AppPalette.gold;
+  const _PriceBand(this.label, this.minPaise, this.maxPaise);
 }
 
-/// Screen-local type aliases onto the design system.
-///
-/// `display` used to be Bebas Neue — a condensed poster face at odds with the
-/// editorial direction. It now resolves to the same Cormorant Garamond used
-/// for every headline in the app. Bebas renders far more compactly than a
-/// serif at the same point size, so the sizes passed by the layout code below
-/// are scaled up here rather than being edited at ~40 call sites.
-class _T {
-  static TextStyle display(double size,
-          {Color color = _C.dark, double spacing = 0}) =>
-      AppType.displayMedium.copyWith(
-        fontSize: size * 1.12,
-        color: color,
-        letterSpacing: spacing,
-      );
-
-  static TextStyle label(double size,
-          {Color color = _C.dark,
-          FontWeight fw = FontWeight.w600,
-          double spacing = 0.5}) =>
-      AppType.label.copyWith(
-        fontSize: size,
-        fontWeight: fw,
-        color: color,
-        letterSpacing: spacing,
-      );
-
-  static TextStyle body(double size,
-          {Color color = _C.grey700, FontWeight fw = FontWeight.w400}) =>
-      AppType.bodyMedium.copyWith(
-        fontSize: size,
-        fontWeight: fw,
-        color: color,
-      );
-
-  static TextStyle brandName(double size, {Color color = _C.ivory}) =>
-      AppType.displaySmall.copyWith(
-        fontSize: size,
-        color: color,
-        letterSpacing: 0.5,
-      );
-}
-
-// ─── MODEL ────────────────────────────────────────────────────────────────────
-class _Outfit {
-  final String brand, style, price, imageUrl, vibeTag;
-  final String? originalPrice;
-  final List<String> occasions;
-  final bool withinBudget;
-  final int xpenseOver;
-
-  // ── SKU ── links this outfit to SkuCatalog (optional). Null → fallback SKU.
-  final String? parentId;
-
-  // ── FOMO fields (Ch. 15 FOMO Design System) ───────────────────────────
-  // Max 2 active signals per card; priority: stock > social > recency > newDrop > trending
-  final int?   stockLeft;       // < 5 → Stock Counter (Roboto Mono, fomoRed, 2s pulse)
-  final int?   viewersNow;      // → Social Proof (Montserrat Black, muted, static)
-  final int?   ordersToday;     // → Recency Signal (Jost, brandTan, no animation)
-  final bool   isNewDrop;       // → New Drop Alert (shimmer sweep + NEW badge glow)
-  final int?   droppedMinsAgo;  // copy for new drop
-  final String? trendingFor;   // → Trending Badge (crown icon, brandTan, static pill)
-
-  const _Outfit({
-    required this.brand,
-    required this.style,
-    required this.price,
-    required this.imageUrl,
-    required this.vibeTag,
-    this.originalPrice,
-    required this.occasions,
-    this.withinBudget = true,
-    this.xpenseOver = 0,
-    this.parentId, // ── SKU ──
-    // FOMO
-    this.stockLeft,
-    this.viewersNow,
-    this.ordersToday,
-    this.isNewDrop = false,
-    this.droppedMinsAgo,
-    this.trendingFor,
-  });
-}
-
-// ─── DATA ─────────────────────────────────────────────────────────────────────
-const _outfits = [
-  _Outfit(
-    brand: 'MAISON KAIRA',
-    style: 'Festive Embroidered Lehenga',
-    price: '₹18,500',
-    imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&q=90',
-    occasions: ['FESTIVE', 'WEDDING'],
-    withinBudget: true,
-    vibeTag: 'Luxe Ethnic',
-    parentId: 'FSR-MK', // ── SKU ── (not yet in catalog → synthesized fallback)
-    // FOMO: Trending + Social Proof
-    trendingFor: '#1 in Wedding Looks',
-    viewersNow: 18,
-  ),
-  _Outfit(
-    brand: 'ATELIER SUR',
-    style: 'Power Structured Blazer',
-    price: '₹8,400',
-    originalPrice: '₹12,000',
-    imageUrl: 'https://images.unsplash.com/photo-1551803091-e20673f15770?w=800&q=90',
-    occasions: ['WORK', 'FORMAL'],
-    withinBudget: true,
-    vibeTag: 'Boss Energy',
-    parentId: 'PBL-AS', // ── SKU ──
-    // FOMO: Stock Counter + Recency
-    stockLeft: 3,
-    ordersToday: 31,
-  ),
-  _Outfit(
-    brand: 'DECO NOIR',
-    style: 'Street Oversized Jacket',
-    price: '₹14,200',
-    originalPrice: '₹9,999',
-    imageUrl: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&q=90',
-    occasions: ['CASUAL', 'STREET'],
-    withinBudget: false,
-    xpenseOver: 340,
-    vibeTag: 'Dark Street',
-    parentId: 'STJ-DN', // ── SKU ──
-    // FOMO: New Drop + Social Proof
-    isNewDrop: true,
-    droppedMinsAgo: 23,
-    viewersNow: 7,
-  ),
-  _Outfit(
-    brand: 'INDIRA & CO',
-    style: 'Ethnic Silk Kurta Set',
-    price: '₹9,750',
-    imageUrl: 'https://images.unsplash.com/photo-1566206091558-7f218b696731?w=800&q=90',
-    occasions: ['CASUAL', 'FESTIVE'],
-    withinBudget: true,
-    vibeTag: 'Soft Ethnic',
-    parentId: 'VKT-IC', // ── SKU ──
-    // FOMO: Recency + Trending
-    ordersToday: 47,
-    trendingFor: '#1 in Ethnic Today',
-  ),
-  _Outfit(
-    brand: 'CASA MODAS',
-    style: 'Printed Coord Two-Piece',
-    price: '₹7,500',
-    imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=90',
-    occasions: ['BRUNCH', 'CASUAL'],
-    withinBudget: true,
-    vibeTag: 'Chill Glam',
-    parentId: 'COS-CM', // ── SKU ──
-    // FOMO: Stock Counter + Social Proof
-    stockLeft: 2,
-    viewersNow: 12,
-  ),
-  _Outfit(
-    brand: 'RAW & REFINED',
-    style: 'Distressed Denim Jacket',
-    price: '₹5,999',
-    imageUrl: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=800&q=90',
-    occasions: ['STREET', 'CASUAL'],
-    withinBudget: false,
-    xpenseOver: 200,
-    vibeTag: 'Raw Edge',
-    parentId: 'DJK-RR', // ── SKU ──
-    // FOMO: New Drop only
-    isNewDrop: true,
-    droppedMinsAgo: 54,
-  ),
+const _priceBands = <_PriceBand>[
+  _PriceBand('Under ₹5,000', 0, 500000),
+  _PriceBand('₹5,000 – ₹10,000', 500000, 1000000),
+  _PriceBand('₹10,000 – ₹20,000', 1000000, 2000000),
+  _PriceBand('Over ₹20,000', 2000000, 1 << 40),
 ];
 
-enum _SwipeDir { left, right, up }
+/// Actions offered by the overflow ("More") sheet.
+enum _MoreAction { toggleStock, clearAll }
 
-// ─── SWIPE STYLE SCREEN ───────────────────────────────────────────────────────
+/// One resolved swipe, kept so [_undo] can put it back exactly as it was.
+///
+/// [payload] is set only for a keep: it carries the concrete variant SKU that
+/// went to the cart, which is what an undo has to delete.
+class _SwipeRecord {
+  final ParentProduct product;
+  final _SwipeDir direction;
+  final CartPayload? payload;
+
+  const _SwipeRecord(this.product, this.direction, {this.payload});
+}
+
 class SwipeStyleScreen extends StatefulWidget {
   const SwipeStyleScreen({super.key});
+
+  /// Fade route matching the app's page transition.
+  static Route<void> route() => PageRouteBuilder(
+    pageBuilder: (_, __, ___) => const SwipeStyleScreen(),
+    transitionDuration: AppMotion.slow,
+    reverseTransitionDuration: AppMotion.normal,
+    transitionsBuilder: (_, animation, __, child) => FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: AppMotion.enter),
+      child: child,
+    ),
+  );
+
   @override
   State<SwipeStyleScreen> createState() => _SwipeStyleScreenState();
 }
 
 class _SwipeStyleScreenState extends State<SwipeStyleScreen>
     with TickerProviderStateMixin {
+  // ── Filter state ────────────────────────────────────────────────────────
+  _SortOption _sort = _SortOption.newest;
+  final Set<String> _brands = <String>{};
+  final Set<String> _categories = <String>{};
+  _PriceBand? _band;
+  bool _inStockOnly = false;
 
+  // ── Deck ────────────────────────────────────────────────────────────────
+  List<ParentProduct> _deck = const [];
   int _topIndex = 0;
-  bool _warmMode = true;
-  int _cartCount = 0;
 
-  // Drag
-  Offset _dragOffset = Offset.zero;
-  double _dragRotation = 0;
+  /// Everything swiped so far, newest last. Drives Undo.
+  final List<_SwipeRecord> _history = [];
+
+  /// Pieces kept this session — the thumbnails on the cart nudge.
+  final List<ParentProduct> _bag = [];
+
+  // ── Drag ────────────────────────────────────────────────────────────────
+  Offset _drag = Offset.zero;
+  double _rotation = 0;
   bool _isDragging = false;
+  double _likeHint = 0;
+  double _passHint = 0;
+  double _vibeHint = 0;
 
-  // Hints
-  double _rightHint = 0, _leftHint = 0, _upHint = 0;
-
-  // Try-on
-  double _tryOnOpacity = 0;
-  Timer? _tryOnTimer;
-
-  // Cart
-  bool _cartExpanded = false;
-  final List<_Outfit> _cartItems = [];
-
-  // ── SKU cart (additive) — resolved CartPayloads for each right-swipe ───────
-  // Runs parallel to _cartItems; no widget/layout/animation impact.
-  final List<CartPayload> _skuCart = [];
-
-  // Heart burst
-  late AnimationController _heartCtrl;
-  late Animation<double> _heartScale, _heartFade;
-  bool _showHeart = false;
-
-  // Drawer
-  bool _drawerOpen = false;
-  late AnimationController _drawerCtrl;
-  late Animation<double> _drawerAnim;
-
-  // Swipe-out
-  late AnimationController _swipeCtrl;
-  late Animation<Offset> _swipeAnim;
+  // ── Motion ──────────────────────────────────────────────────────────────
+  late final AnimationController _swipeCtrl;
+  late final AnimationController _appearCtrl;
+  Animation<Offset> _swipeAnim = const AlwaysStoppedAnimation(Offset.zero);
   _SwipeDir? _swipeDir;
-
-  // Card appear
-  late AnimationController _appearCtrl;
-  late Animation<double> _appearAnim;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
 
-    _heartCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 650));
-    _heartScale = Tween<double>(begin: 0.4, end: 1.8).animate(
-        CurvedAnimation(parent: _heartCtrl, curve: Curves.elasticOut));
-    _heartFade = Tween<double>(begin: 1.0, end: 0.0).animate(
-        CurvedAnimation(
-            parent: _heartCtrl,
-            curve: const Interval(0.55, 1.0, curve: Curves.easeOut)));
+    _swipeCtrl = AnimationController(vsync: this, duration: AppMotion.normal);
+    _appearCtrl = AnimationController(vsync: this, duration: AppMotion.normal)
+      ..forward();
 
-    _drawerCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 360));
-    _drawerAnim =
-        CurvedAnimation(parent: _drawerCtrl, curve: Curves.easeOutCubic);
+    _applyFilters();
 
-   _swipeCtrl = AnimationController(
-  vsync: this,
-  duration: const Duration(milliseconds: 300),
-);
-    _swipeAnim =
-        Tween<Offset>(begin: Offset.zero, end: Offset.zero).animate(_swipeCtrl);
-
-    _appearCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 320));
-    _appearAnim =
-        CurvedAnimation(parent: _appearCtrl, curve: Curves.easeOutCubic);
-    _appearCtrl.forward();
-
-    _startTryOnTimer();
-  }
-
-  void _startTryOnTimer() {
-    _tryOnTimer?.cancel();
-    setState(() => _tryOnOpacity = 0);
-    _tryOnTimer = Timer(const Duration(milliseconds: 1500), () {
-      if (mounted) setState(() => _tryOnOpacity = 1.0);
+    // Hydrate the wishlist so the heart on the first card is truthful rather
+    // than popping in a beat later.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _fireAndForget('wishlist load', WishlistService.instance.load);
     });
   }
 
   @override
   void dispose() {
-    _heartCtrl.dispose();
-    _drawerCtrl.dispose();
     _swipeCtrl.dispose();
     _appearCtrl.dispose();
-    _tryOnTimer?.cancel();
     super.dispose();
   }
 
-  // ── SKU ── Parse a display price string like '₹18,500' → paise (1850000) ───
-  int _priceToPaise(String price) {
-    final n = int.tryParse(price.replaceAll(RegExp(r'[₹,\s]'), '')) ?? 0;
-    return n * 100;
+  // ── Deck construction ───────────────────────────────────────────────────
+
+  ParentProduct? get _current =>
+      _topIndex < _deck.length ? _deck[_topIndex] : null;
+
+  bool get _canUndo => _history.isNotEmpty;
+
+  /// Cheapest variant price in paise; products with no variants sort last.
+  int _lowestPaise(ParentProduct product) {
+    if (product.variantMap.isEmpty) return 1 << 40;
+    return product.variantMap.values
+        .map((v) => v.priceInPaise)
+        .reduce((a, b) => a < b ? a : b);
   }
 
-  // ── Drag handlers ─────────────────────────────────────────────────────────
-  void _onPanStart(DragStartDetails _) =>
-      setState(() { _isDragging = true; _dragOffset = Offset.zero; });
+  /// Rebuilds the deck from the catalogue and resets it to the first card.
+  ///
+  /// Mutates state directly — callers outside [initState] wrap it in
+  /// `setState`. History is cleared because an undo across a filter change
+  /// would put back a card the new filter excludes.
+  void _applyFilters() {
+    final items = CatalogService.getAll().where((product) {
+      if (_brands.isNotEmpty && !_brands.contains(product.brand)) return false;
+      if (_categories.isNotEmpty && !_categories.contains(product.category)) {
+        return false;
+      }
+      if (_inStockOnly && product.stock <= 0) return false;
+      final band = _band;
+      if (band != null) {
+        final paise = _lowestPaise(product);
+        if (paise < band.minPaise || paise >= band.maxPaise) return false;
+      }
+      return true;
+    }).toList();
 
-  void _onPanUpdate(DragUpdateDetails d) {
+    switch (_sort) {
+      case _SortOption.newest:
+        items.sort((a, b) {
+          final aAge = a.droppedMinsAgo == 0 ? 1 << 30 : a.droppedMinsAgo;
+          final bAge = b.droppedMinsAgo == 0 ? 1 << 30 : b.droppedMinsAgo;
+          return aAge.compareTo(bAge);
+        });
+      case _SortOption.priceLowToHigh:
+        items.sort((a, b) => _lowestPaise(a).compareTo(_lowestPaise(b)));
+      case _SortOption.priceHighToLow:
+        items.sort((a, b) => _lowestPaise(b).compareTo(_lowestPaise(a)));
+      case _SortOption.trending:
+        items.sort((a, b) {
+          final aRank = a.cityRank == 0 ? 1 << 30 : a.cityRank;
+          final bRank = b.cityRank == 0 ? 1 << 30 : b.cityRank;
+          return aRank.compareTo(bRank);
+        });
+    }
+
+    _deck = items;
+    _topIndex = 0;
+    _history.clear();
+    _resetDrag();
+  }
+
+  void _clearFilters() {
     setState(() {
-      _dragOffset += d.delta;
-      _dragRotation = _dragOffset.dx * 0.0012;
-      final dx = _dragOffset.dx, dy = _dragOffset.dy;
-      if (_dragOffset.distance < 12) {
-        _rightHint = _leftHint = _upHint = 0;
+      _brands.clear();
+      _categories.clear();
+      _band = null;
+      _inStockOnly = false;
+      _sort = _SortOption.newest;
+      _applyFilters();
+    });
+    _appearCtrl.forward(from: 0);
+  }
+
+  void _resetDrag() {
+    _drag = Offset.zero;
+    _rotation = 0;
+    _isDragging = false;
+    _likeHint = _passHint = _vibeHint = 0;
+  }
+
+  // ── Swipe mechanics ─────────────────────────────────────────────────────
+
+  void _onPanStart(DragStartDetails _) {
+    if (_swipeCtrl.isAnimating) return;
+    setState(() {
+      _isDragging = true;
+      _drag = Offset.zero;
+    });
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (_swipeCtrl.isAnimating) return;
+    setState(() {
+      _drag += details.delta;
+      _rotation = _drag.dx * 0.0011;
+
+      final dx = _drag.dx;
+      final dy = _drag.dy;
+      if (_drag.distance < 12) {
+        _likeHint = _passHint = _vibeHint = 0;
       } else if (dy < -30 && dy.abs() > dx.abs()) {
-        _upHint = ((-dy - 30) / 70).clamp(0.0, 1.0);
-        _rightHint = _leftHint = 0;
+        _vibeHint = ((-dy - 30) / 70).clamp(0.0, 1.0);
+        _likeHint = _passHint = 0;
       } else if (dx > 0) {
-        _rightHint = ((dx - 20) / 70).clamp(0.0, 1.0);
-        _leftHint = _upHint = 0;
+        _likeHint = ((dx - 20) / 70).clamp(0.0, 1.0);
+        _passHint = _vibeHint = 0;
       } else {
-        _leftHint = ((-dx - 20) / 70).clamp(0.0, 1.0);
-        _rightHint = _upHint = 0;
+        _passHint = ((-dx - 20) / 70).clamp(0.0, 1.0);
+        _likeHint = _vibeHint = 0;
       }
     });
   }
 
   void _onPanEnd(DragEndDetails _) {
-    final dx = _dragOffset.dx, dy = _dragOffset.dy;
-    if (dy < -90 && dy.abs() > dx.abs()) _triggerSwipe(_SwipeDir.up);
-    else if (dx > 80) _triggerSwipe(_SwipeDir.right);
-    else if (dx < -80) _triggerSwipe(_SwipeDir.left);
-    else {
-      setState(() {
-        _dragOffset = Offset.zero;
-        _dragRotation = 0;
-        _isDragging = false;
-        _rightHint = _leftHint = _upHint = 0;
-      });
+    final dx = _drag.dx;
+    final dy = _drag.dy;
+    if (dy < -90 && dy.abs() > dx.abs()) {
+      _triggerSwipe(_SwipeDir.vibe);
+    } else if (dx > 90) {
+      _triggerSwipe(_SwipeDir.like);
+    } else if (dx < -90) {
+      _triggerSwipe(_SwipeDir.pass);
+    } else {
+      setState(_resetDrag);
     }
   }
 
+  /// Flings the top card away, then resolves the swipe.
   void _triggerSwipe(_SwipeDir dir) {
-    _swipeDir = dir;
-    final end = dir == _SwipeDir.right
-        ? const Offset(700, 80)
-        : dir == _SwipeDir.left
-            ? const Offset(-700, 80)
-            : const Offset(0, -800);
+    if (_current == null || _swipeCtrl.isAnimating) return;
+    HapticFeedback.selectionClick();
 
-    _swipeAnim = Tween<Offset>(begin: _dragOffset, end: end).animate(
-        CurvedAnimation(parent: _swipeCtrl, curve: _swipeDir == _SwipeDir.left
-    ? const Cubic(0.25, 0.46, 0.45, 0.94)
-    : const Cubic(0.34, 1.56, 0.64, 1)));
+    _swipeDir = dir;
+    final end = switch (dir) {
+      _SwipeDir.like => const Offset(560, 80),
+      _SwipeDir.pass => const Offset(-560, 80),
+      _SwipeDir.vibe => const Offset(0, -680),
+    };
+
+    _swipeAnim = Tween<Offset>(
+      begin: _drag,
+      end: end,
+    ).animate(CurvedAnimation(parent: _swipeCtrl, curve: AppMotion.exit));
 
     _swipeCtrl.forward(from: 0).then((_) {
-      if (!mounted) return;
-      if (dir == _SwipeDir.right) {
-        final o = _outfits[_topIndex % _outfits.length];
-        _cartItems.add(o);
-        _cartCount++;
-        // ── SKU ── resolve this liked outfit into a SKU-bearing CartPayload.
-        _skuCart.add(_skuPayloadFor(
-          parentId         : o.parentId,
-          name             : o.style,
-          brand            : o.brand,
-          unitPriceInPaise : _priceToPaise(o.price),
-          imageUrl         : o.imageUrl,
-        ));
-        final payload = _skuCart.last;
-        debugPrint('🧾 SwipeStyle LOVE → SKU ${payload.variantSku}  '
-            '${payload.size}/${payload.colorName}');
-        CartService.instance.addItem(payload).catchError((e) {
-          debugPrint('⚠️  CartService.addItem error: $e');
-        });
-      }
-      setState(() {
-        _topIndex++;
-        _dragOffset = Offset.zero;
-        _dragRotation = 0;
-        _isDragging = false;
-        _rightHint = _leftHint = _upHint = 0;
-        _swipeDir = null;
-      });
-      _swipeCtrl.reset();
-      _appearCtrl.forward(from: 0);
-      _startTryOnTimer();
+      if (mounted) _completeSwipe(dir);
     });
   }
 
-  void _handleDoubleTap() {
-    setState(() => _showHeart = true);
-    _heartCtrl.forward(from: 0)
-        .then((_) { if (mounted) setState(() => _showHeart = false); });
-  }
+  void _completeSwipe(_SwipeDir dir) {
+    final product = _deck[_topIndex];
+    final payload = dir == _SwipeDir.like ? _addToBag(product) : null;
 
-  void _handleLongPress() {
-    setState(() => _drawerOpen = true);
-    _drawerCtrl.forward();
-  }
+    setState(() {
+      _history.add(_SwipeRecord(product, dir, payload: payload));
+      _topIndex++;
+      _swipeDir = null;
+      _resetDrag();
+    });
 
-  void _closeDrawer() =>
-      _drawerCtrl.reverse()
-          .then((_) { if (mounted) setState(() => _drawerOpen = false); });
+    _swipeCtrl.reset();
+    _appearCtrl.forward(from: 0);
 
-  // ── SKU ── Finalize the resolved SKU cart (SEND TO MAIN CART). Backend only.
-  Future<void> _sendSkuCartToMain() async {
-  if (_skuCart.isEmpty) return;
-  try {
-    await CartService.instance.addItems(_skuCart);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${_skuCart.length} item${_skuCart.length > 1 ? 's' : ''} sent to cart!',
-          style: _T.label(13, color: _C.white),
-        ),
-        backgroundColor: _C.magenta,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    setState(() => _cartExpanded = false);
-  } catch (e) {
-    debugPrint('⚠️  CartService.addItems error: $e');
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to sync cart. Try again.',
-            style: _T.label(13, color: _C.white)),
-        backgroundColor: _C.sale,
-      ),
-    );
-  }
-}
-
-  // ─────────────────────────────────────────────────────────────────────────
-  @override
-Widget build(BuildContext context) {
-
-  final mq = MediaQuery.of(context);
-
-  const double actionBarH = 100.0;
-  const double cartStripH = 40.0;
-
-  final double safeBot = mq.padding.bottom;
-
-  final double bottomBarH =
-      actionBarH + cartStripH + safeBot;
-
-  final double topBarH =
-      mq.padding.top + 56.0;
-
-  return AnimatedContainer(
-
-    duration: const Duration(milliseconds: 500),
-
-    curve: Curves.easeInOut,
-
-    decoration: BoxDecoration(
-
-      gradient: LinearGradient(
-
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-
-        colors: _warmMode
-            ? [
-                const Color(0x22FFB74D),
-                Colors.transparent,
-              ]
-            : [
-                const Color(0x221E88E5),
-                Colors.transparent,
-              ],
-      ),
-    ),
-
-    child: Scaffold(
-
-      backgroundColor: Colors.transparent,
-
-      body: Stack(
-
-        children: [
-
-          _buildStackCards(topBarH, bottomBarH),
-
-          _buildMainCard(topBarH, bottomBarH),
-
-          _buildHints(mq),
-
-          _buildTopBar(mq),
-
-          _buildTryOnBtn(bottomBarH),
-
-          _buildBottomBar(mq, safeBot),
-
-          if (_showHeart) _buildHeartBurst(),
-
-          if (_showHeart) _buildSparkBurst(),
-
-          if (_drawerOpen) _buildDrawer(mq),
-
-          if (_cartExpanded)
-            _buildCartPanel(bottomBarH),
-        ],
-      ),
-    ),
-  );
-}
-
-  // ─── 1. STACK DEPTH CARDS ─────────────────────────────────────────────────
-  Widget _buildStackCards(double topH, double botH) {
-    Widget card(int offset, double scale, double topExtra, double hzPad) {
-      final idx = (_topIndex + offset) % _outfits.length;
-      return Positioned(
-        top: topH + topExtra,
-        left: hzPad,
-        right: hzPad,
-        bottom: botH + topExtra * 0.5,
-        child: Transform.scale(
-          scale: scale,
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(_outfits[idx].imageUrl),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        ),
+    if (dir == _SwipeDir.vibe) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VibeCheckScreen()),
       );
     }
-    return Stack(children: [
-      card(2, 0.88, 16, 18),
-      card(1, 0.94, 9,  10),
-    ]);
   }
 
-  // ─── 2. MAIN CARD ─────────────────────────────────────────────────────────
-  Widget _buildMainCard(double topH, double botH) {
-
-  final outfit =
-      _outfits[_topIndex % _outfits.length];
-
-  return Positioned(
-
-    top: topH,
-    left: 0,
-    right: 0,
-    bottom: botH,
-
-    child: AnimatedBuilder(
-
-      animation:
-          Listenable.merge([_swipeCtrl, _appearCtrl]),
-
-      builder: (_, __) {
-
-        final offset = _swipeCtrl.isAnimating
-            ? _swipeAnim.value
-            : (_isDragging
-                ? _dragOffset
-                : Offset.zero);
-
-        final rot = _swipeCtrl.isAnimating
-            ? (_swipeDir == _SwipeDir.right
-                ? 0.12
-                : _swipeDir == _SwipeDir.left
-                    ? -0.12
-                    : 0.0)
-            : _dragRotation;
-
-        return Transform(
-
-          transform: Matrix4.identity()
-            ..translate(offset.dx, offset.dy)
-            ..rotateZ(rot),
-
-          alignment: Alignment.bottomCenter,
-
-          child: FadeTransition(
-
-            opacity: _appearAnim,
-
-            child: GestureDetector(
-
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              onPanEnd: _onPanEnd,
-              onDoubleTap: _handleDoubleTap,
-              onLongPress: _handleLongPress,
-
-              child: Stack(
-
-                fit: StackFit.expand,
-
-                children: [
-
-                  // FABRIC TRAIL WAVE
-                  if (_swipeDir == _SwipeDir.left &&
-                      _swipeCtrl.isAnimating)
-
-                    AnimatedBuilder(
-
-                      animation: _swipeCtrl,
-
-                      builder: (_, __) {
-
-                        return Positioned.fill(
-
-                          child: Opacity(
-
-                            opacity:
-                                (1 - _swipeCtrl.value) * 0.22,
-
-                            child: Transform.translate(
-
-                              offset: Offset(
-                                -40 * _swipeCtrl.value,
-                                0,
-                              ),
-
-                              child: Container(
-
-                                decoration: BoxDecoration(
-
-                                  gradient: LinearGradient(
-
-                                    colors: [
-                                      Colors.white
-                                          .withValues(alpha: 0.10),
-
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                  // MAIN CARD
-                  _OutfitCard(outfit: outfit),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
-  // ─── 3. HINT STAMPS ───────────────────────────────────────────────────────
-  Widget _buildHints(MediaQueryData mq) {
-    final top = mq.padding.top + 80.0;
-    return Stack(children: [
-      Positioned(
-        top: top, left: 16,
-        child: Opacity(
-          opacity: _rightHint,
-          child: Transform.rotate(angle: -0.25,
-            child: _HintStamp(label: 'LOVE IT', color: _C.magenta)),
-        ),
-      ),
-      Positioned(
-        top: top, right: 16,
-        child: Opacity(
-          opacity: _leftHint,
-          child: Transform.rotate(angle: 0.25,
-            child: _HintStamp(label: 'PASS', color: _C.grey300)),
-        ),
-      ),
-      Positioned(
-        top: top, left: 0, right: 0,
-        child: Opacity(
-          opacity: _upHint,
-          child: Center(child: _HintStamp(label: 'VIBE CHECK', color: _C.amber)),
-        ),
-      ),
-    ]);
+  /// Runs a backend call without ever letting it reach the deck.
+  ///
+  /// Both failure modes have to be caught, and a bare `catchError` only
+  /// handles one of them: reaching `CartService.instance` builds its Firebase
+  /// handles *synchronously*, so an unconfigured or signed-out app throws
+  /// before there is a future to attach to. `WishlistService.load` has the
+  /// same shape — it reads `FirebaseAuth.instance` outside its own try.
+  ///
+  /// The deck is a browsing surface: it keeps working whether or not the
+  /// backend is reachable, and the cart screen re-reads the server when it
+  /// opens.
+  void _fireAndForget(String label, Future<void> Function() call) {
+    try {
+      call().catchError((Object error) {
+        debugPrint('SwipeStyle: $label failed — $error');
+      });
+    } catch (error) {
+      debugPrint('SwipeStyle: $label unavailable — $error');
+    }
   }
 
-  // ─── 4. TOP BAR ───────────────────────────────────────────────────────────
-  Widget _buildTopBar(MediaQueryData mq) {
-    final current = _topIndex % _outfits.length + 1;
-    final total   = _outfits.length;
-    final vibe    = _outfits[_topIndex % _outfits.length].vibeTag.toUpperCase();
-
-    return Positioned(
-      top: 0, left: 0, right: 0,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xD0000000), Colors.transparent],
-          ),
-        ),
-        padding: EdgeInsets.only(
-          top: mq.padding.top + 10,
-          bottom: 14, left: 16, right: 16,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.of(context).maybePop(),
-              child: const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Icon(Icons.arrow_back_ios_new,
-                    color: _C.white, size: 20),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Padding(
-              padding: const EdgeInsets.only(top: 1),
-              child: Text('SWIPESTYLE',
-                  style: _T.display(22, color: _C.white, spacing: 2)),
-            ),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => setState(() => _cartExpanded = !_cartExpanded),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 38, height: 38,
-                    decoration: BoxDecoration(
-                      color: _C.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.shopping_bag_outlined,
-                        color: _C.white, size: 22),
-                  ),
-                  if (_cartCount > 0)
-                    Positioned(
-                      top: -5, right: -5,
-                      child: Container(
-                        constraints: const BoxConstraints(minWidth: 18),
-                        height: 18,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: const BoxDecoration(
-                            color: _C.magenta, shape: BoxShape.circle),
-                        child: Center(
-                          child: Text('$_cartCount',
-                              style: _T.label(9, color: _C.white, spacing: 0)),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _C.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text('$current / $total',
-                      style: _T.label(11, color: _C.white, spacing: 0.5)),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  color: _C.magenta,
-                  child: Text(vibe,
-                      style: _T.label(8, color: _C.white, spacing: 1.2)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  /// First in-stock variant, or null when the piece can't be bought.
+  ProductVariant? _firstAvailableVariant(ParentProduct product) {
+    for (final variant in product.variantMap.values) {
+      if (variant.inStock) return variant;
+    }
+    return null;
   }
 
-  // ─── 5. VIRTUAL TRY-ON BUTTON ─────────────────────────────────────────────
-  Widget _buildTryOnBtn(double bottomBarH) {
-
-  return Positioned(
-
-    bottom: bottomBarH + 12,
-    left: 0,
-    right: 0,
-
-    child: AnimatedOpacity(
-
-      opacity: _tryOnOpacity,
-
-      duration: const Duration(milliseconds: 500),
-
-      child: Center(
-
-        child: GestureDetector(
-
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const VirtualTryOnScreen()),
-            );
-          },
-
-          child: Stack(
-
-            alignment: Alignment.center,
-
-            children: [
-
-              // TIMER RING
-              TweenAnimationBuilder(
-
-                tween: Tween(begin: 1.0, end: 0.0),
-
-                duration: const Duration(minutes: 15),
-
-                builder: (_, value, __) {
-
-                  return SizedBox(
-
-                    width: 72,
-                    height: 72,
-
-                    child: CircularProgressIndicator(
-
-                      value: value,
-
-                      strokeWidth: 2,
-
-                      backgroundColor: Colors.white12,
-
-                      valueColor: AlwaysStoppedAnimation(
-
-                        value < 0.13
-                            ? Colors.red
-                            : value < 0.33
-                                ? Colors.amber
-                                : _C.brandTan,
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              // BUTTON
-              Container(
-
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 9,
-                ),
-
-                decoration: BoxDecoration(
-
-                  color: _C.white.withValues(alpha: 0.10),
-
-                  borderRadius: BorderRadius.circular(2),
-
-                  border: Border.all(
-                    color: _C.white.withValues(alpha: 0.28),
-                    width: 1,
-                  ),
-                ),
-
-                child: Row(
-
-                  mainAxisSize: MainAxisSize.min,
-
-                  children: [
-
-                    Icon(
-                      Icons.view_in_ar_outlined,
-
-                      size: 14,
-
-                      color: _C.white.withValues(alpha: 0.85),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    Text(
-
-                      'VIRTUAL TRY-ON',
-
-                      style: _T.label(
-
-                        11,
-
-                        color:
-                            _C.white.withValues(alpha: 0.85),
-
-                        spacing: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-  // ─── 6. BOTTOM BAR ────────────────────────────────────────────────────────
-  Widget _buildBottomBar(MediaQueryData mq, double safeBot) {
-    return Positioned(
-      bottom: 0, left: 0, right: 0,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 100,
-            color: _C.navBg,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _ActionBtn(
-                  icon: Icons.close_rounded,
-                  color: _C.grey300,
-                  iconSize: 26, containerSize: 50,
-                  label: 'PASS',
-                  onTap: () => _triggerSwipe(_SwipeDir.left),
-                ),
-                _ActionBtn(
-                  icon: Icons.bolt,
-                  color: _C.amber,
-                  iconSize: 22, containerSize: 46,
-                  label: 'VIBE',
-                  onTap: () => _triggerSwipe(_SwipeDir.up),
-                ),
-                _ActionBtn(
-                  icon: Icons.favorite_rounded,
-                  color: _C.white,
-                  iconSize: 32, containerSize: 64,
-                  label: 'LOVE IT',
-                  primary: true,
-                  onTap: () => _triggerSwipe(_SwipeDir.right),
-                ),
-                _ActionBtn(
-                  icon: Icons.bookmark_border_rounded,
-                  color: _C.grey300,
-                  iconSize: 22, containerSize: 46,
-                  label: 'SAVE',
-                  onTap: _handleDoubleTap,
-                ),
-                _ActionBtn(
-                  icon: Icons.tune,
-                  color: _C.grey300,
-                  iconSize: 22, containerSize: 46,
-                  label: 'BUILD',
-                  onTap: _handleLongPress,
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => setState(() => _cartExpanded = !_cartExpanded),
-            onVerticalDragUpdate: (d) {
-              if (d.delta.dy < -6) setState(() => _cartExpanded = true);
-              if (d.delta.dy > 6)  setState(() => _cartExpanded = false);
-            },
-            child: Container(
-              color: _C.brownDark,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(height: 4, color: _C.brown),
-                  SizedBox(
-                    height: 36,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 28, height: 3,
-                          decoration: BoxDecoration(
-                              color: _C.brown,
-                              borderRadius: BorderRadius.circular(2)),
-                        ),
-                        const SizedBox(width: 14),
-                        Text('SWIPESTYLE CART',
-                            style: _T.label(11,
-                                color: _C.ivory, spacing: 1.8)),
-                        if (_cartCount > 0) ...[
-                          const SizedBox(width: 10),
-                          Container(
-                            width: 22, height: 22,
-                            decoration: const BoxDecoration(
-                                color: _C.magenta, shape: BoxShape.circle),
-                            child: Center(
-                              child: Text('$_cartCount',
-                                  style: _T.label(10,
-                                      color: _C.white, spacing: 0)),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: safeBot),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── 7. HEART BURST ───────────────────────────────────────────────────────
-  Widget _buildHeartBurst() {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _heartCtrl,
-            builder: (_, __) => Opacity(
-              opacity: _heartFade.value,
-              child: Transform.scale(
-                scale: _heartScale.value,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Transform.translate(
-                      offset: Offset(
-                          18 * _heartCtrl.value, -18 * _heartCtrl.value),
-                      child: Opacity(
-                        opacity: _heartFade.value * 0.55,
-                        child: const Icon(Icons.favorite_rounded,
-                            color: _C.magenta, size: 55),
-                      ),
-                    ),
-                    const Icon(Icons.favorite_rounded,
-                        color: _C.magenta, size: 78),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-  }
-
-  Widget _buildSparkBurst() {
-
-  return Positioned.fill(
-
-    child: IgnorePointer(
-
-      child: AnimatedBuilder(
-
-        animation: _heartCtrl,
-
-        builder: (_, __) {
-
-          return Stack(
-
-            children: List.generate(6, (i) {
-
-              final angle = (pi / 3) * i;
-
-              final dist = 80 * _heartCtrl.value;
-
-              return Positioned(
-
-                left:
-                    MediaQuery.of(context).size.width / 2 +
-                    cos(angle) * dist,
-
-                top:
-                    MediaQuery.of(context).size.height / 2 +
-                    sin(angle) * dist,
-
-                child: Opacity(
-
-                  opacity: 1 - _heartCtrl.value,
-
-                  child: Container(
-
-                    width: 6,
-                    height: 6,
-
-                    decoration: const BoxDecoration(
-                      color: _C.magenta,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              );
-            }),
-          );
-        },
-      ),
-    ),
-  );
-}
-
-  // ─── 8. OUTFIT BUILDER DRAWER ─────────────────────────────────────────────
-  Widget _buildDrawer(MediaQueryData mq) {
-    final outfit = _outfits[_topIndex % _outfits.length];
-    final pieces = [
-      ('Hero Piece', outfit.style,           outfit.price, true),
-      ('Bottom',     'Wide-leg Trousers',    '₹3,200',    false),
-      ('Shoes',      'Strappy Block Heels',  '₹4,500',    false),
-      ('Bag',        'Mini Structured Clutch','₹2,800',   false),
-    ];
-    return GestureDetector(
-      onTap: _closeDrawer,
-      child: Container(
-        color: Colors.black54,
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: GestureDetector(
-            onTap: () {},
-            child: SlideTransition(
-              position: Tween<Offset>(
-                      begin: const Offset(0, 1), end: Offset.zero)
-                  .animate(_drawerAnim),
-              child: Container(
-                color: _C.dark,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 12, bottom: 4),
-                      width: 36, height: 3,
-                      decoration: BoxDecoration(
-                          color: _C.grey700,
-                          borderRadius: BorderRadius.circular(2)),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                      child: Row(
-                        children: [
-                          Text('INSTANT OUTFIT BUILDER',
-                              style: _T.display(20,
-                                  color: _C.white, spacing: 1)),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: _closeDrawer,
-                            child: const Icon(Icons.close,
-                                color: _C.grey500, size: 20),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(color: _C.grey700, height: 1),
-                    ...pieces.asMap().entries.map((entry) {
-
-  final index = entry.key;
-  final p = entry.value;
-
-  return TweenAnimationBuilder(
-    duration: Duration(milliseconds: 360 + (index * 80)),
-    tween: Tween(begin: 30.0, end: 0.0),
-    curve: const Cubic(0.34, 1.56, 0.64, 1),
-
-    builder: (_, value, child) {
-      return Transform.translate(
-        offset: Offset(0, value),
-
-        child: Opacity(
-          opacity: 1 - (value / 30),
-
-          child: child,
-        ),
+  /// Adds a kept piece to the bag and syncs it to the cart.
+  ///
+  /// The local bag updates immediately and the network call is fire-and-
+  /// forget: a swipe deck that stalled on a round-trip would be unusable, and
+  /// the cart screen re-reads the source of truth when it opens.
+  CartPayload? _addToBag(ParentProduct product) {
+    final variant = _firstAvailableVariant(product);
+    if (variant == null) {
+      AppSnack.show(
+        context,
+        '${product.name} is out of stock',
+        icon: Icons.info_outline,
       );
-    },
+      return null;
+    }
 
-    child: ListTile(
-      dense: true,
+    final payload = CatalogService.buildCartPayload(
+      parent: product,
+      variant: variant,
+    );
+    _bag.add(product);
+    _fireAndForget('cart add', () => CartService.instance.addItem(payload));
 
-      leading: Container(
-        width: 7,
-        height: 7,
+    return payload;
+  }
 
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: p.$4 ? _C.magenta : _C.grey700,
-        ),
-      ),
+  /// Puts the last swiped card back on the deck, undoing its side effects.
+  void _undo() {
+    if (!_canUndo || _swipeCtrl.isAnimating) return;
+    HapticFeedback.selectionClick();
 
-      title: Text(
-        p.$2,
+    final record = _history.removeLast();
+    if (record.direction == _SwipeDir.like) {
+      _bag.remove(record.product);
+      final payload = record.payload;
+      if (payload != null) {
+        _fireAndForget(
+          'cart remove',
+          () => CartService.instance.removeItem(payload.variantSku),
+        );
+      }
+    }
 
-        style: _T.label(
-          13,
-          color: _C.white,
-          spacing: 0,
-        ),
-      ),
+    setState(() {
+      _topIndex = (_topIndex - 1).clamp(0, _deck.length);
+      _resetDrag();
+    });
+    _appearCtrl.forward(from: 0);
 
-      subtitle: Text(
-        p.$1,
-
-        style: _T.body(
-          11,
-          color: _C.grey500,
-        ),
-      ),
-
-      trailing: Text(
-        p.$3,
-
-        style: _T.label(
-          12,
-          color: p.$4 ? _C.magenta : _C.grey300,
-          spacing: 0,
-        ),
-      ),
-    ),
-  );
-
-}).toList(),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _closeDrawer,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                    border: Border.all(color: _C.grey700)),
-                                child: Center(
-                                    child: Text('ADD PIECES',
-                                        style: _T.label(12,
-                                            color: _C.white, spacing: 1.2))),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                _closeDrawer();
-                                _triggerSwipe(_SwipeDir.right);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                color: _C.magenta,
-                                child: Center(
-                                    child: Text('ADD FULL SET',
-                                        style: _T.label(12,
-                                            color: _C.white, spacing: 1.2))),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: mq.padding.bottom),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    AppSnack.show(
+      context,
+      'Back to ${record.product.name}',
+      icon: Icons.replay_rounded,
     );
   }
 
-  // ─── 9. CART PANEL ────────────────────────────────────────────────────────
-  Widget _buildCartPanel(double bottomBarH) {
-    return Positioned(
-      bottom: bottomBarH,
-      left: 0, right: 0,
-      child: Container(
-        color: _C.dark,
+  // ── Filter sheets ───────────────────────────────────────────────────────
+
+  Future<void> _openSortSheet() async {
+    final selected = await showAppSheet<_SortOption>(
+      context,
+      child: AppSheet(
+        title: 'Sort By',
+        subtitle: 'Choose the order of the deck',
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(
-                children: [
-                  Text('SWIPED RIGHT',
-                      style: _T.display(18, color: _C.white, spacing: 1)),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => setState(() => _cartExpanded = false),
-                    child: const Icon(Icons.keyboard_arrow_down,
-                        color: _C.grey500, size: 22),
-                  ),
-                ],
-              ),
-            ),
-            if (_cartItems.isEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-                child: Text('Swipe right on an outfit to add it here!',
-                    style: _T.body(13, color: _C.grey500)),
-              )
-            else
-              SizedBox(
-                height: 160,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  itemCount: _cartItems.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) => AspectRatio(
-                    aspectRatio: 0.75,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: CachedNetworkImage(
-                          imageUrl: _cartItems[i].imageUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(color: _C.grey700),
-                          errorWidget: (_, __, ___) =>
-                              Container(color: _C.grey700)),
-                    ),
+            for (final option in _SortOption.values)
+              ListTile(
+                onTap: () => Navigator.of(context).pop(option),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.page(context),
+                ),
+                title: Text(
+                  option.label,
+                  style: AppType.bodyLarge.copyWith(
+                    color: AppPalette.textPrimary,
+                    fontWeight: option == _sort
+                        ? FontWeight.w600
+                        : FontWeight.w400,
                   ),
                 ),
+                trailing: option == _sort
+                    ? const Icon(Icons.check, size: 19, color: AppPalette.accent)
+                    : null,
               ),
-            if (_cartItems.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: GestureDetector(
-                  // ── SKU ── was `() {}` — now finalizes the resolved SKU cart.
-                  // No visible change: button looks/behaves identically.
-                  onTap: _sendSkuCartToMain,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    color: _C.magenta,
-                    child: Center(
-                        child: Text('SEND TO MAIN CART',
-                            style: _T.label(13,
-                                color: _C.white, spacing: 1.5))),
-                  ),
-                ),
-              ),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),
     );
-  }
-}
 
-// ─── OUTFIT CARD ──────────────────────────────────────────────────────────────
-// Converted to StatefulWidget to support New Drop shimmer sweep animation
-class _OutfitCard extends StatefulWidget {
-  final _Outfit outfit;
-  const _OutfitCard({required this.outfit, super.key});
-  @override
-  State<_OutfitCard> createState() => _OutfitCardState();
-}
-
-class _OutfitCardState extends State<_OutfitCard>
-    with SingleTickerProviderStateMixin {
-
-  late final AnimationController _shimmerCtrl;
-  late final Animation<double> _shimmer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Shimmer sweep: plays once 300ms after card appears — only for New Drops
-    _shimmerCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    );
-    _shimmer = Tween<double>(begin: -1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _shimmerCtrl, curve: Curves.easeInOut),
-    );
-    if (widget.outfit.isNewDrop) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) _shimmerCtrl.forward();
-      });
-    }
+    if (selected == null || selected == _sort || !mounted) return;
+    setState(() {
+      _sort = selected;
+      _applyFilters();
+    });
+    _appearCtrl.forward(from: 0);
   }
 
-  @override
-  void dispose() {
-    _shimmerCtrl.dispose();
-    super.dispose();
-  }
+  Future<void> _openBrandSheet() => _openMultiSelectSheet(
+    title: 'Brand',
+    subtitle: 'Narrow the deck to the labels you wear',
+    options:
+        (CatalogService.getAll().map((p) => p.brand).toSet().toList()..sort()),
+    selection: _brands,
+  );
 
-  @override
-  Widget build(BuildContext context) {
-    final outfit = widget.outfit;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // ── Full-bleed image ────────────────────────────────────────────
-        CachedNetworkImage(
-          imageUrl: outfit.imageUrl,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => Container(color: _C.grey150),
-          errorWidget: (_, __, ___) => Container(
-            color: _C.grey150,
-            child: Center(child: Icon(Icons.image_outlined,
-                color: _C.grey300, size: 48)),
+  Future<void> _openCategorySheet() => _openMultiSelectSheet(
+    title: 'Filters',
+    subtitle: 'Pick the categories you want to see',
+    options:
+        (CatalogService.getAll().map((p) => p.category).toSet().toList()
+          ..sort()),
+    selection: _categories,
+  );
+
+  /// Shared chip-grid sheet for the two multi-select filters.
+  ///
+  /// Edits a draft copy so dismissing the sheet leaves the deck alone; only
+  /// Apply writes back.
+  Future<void> _openMultiSelectSheet({
+    required String title,
+    required String subtitle,
+    required List<String> options,
+    required Set<String> selection,
+  }) async {
+    final draft = Set<String>.of(selection);
+
+    final result = await showAppSheet<Set<String>>(
+      context,
+      child: StatefulBuilder(
+        builder: (sheetContext, setSheetState) => AppSheet(
+          title: title,
+          subtitle: subtitle,
+          footer: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.page(sheetContext),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppButton.secondary(
+                    label: 'Clear',
+                    onPressed: () => setSheetState(draft.clear),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: AppButton(
+                    label: 'Apply',
+                    onPressed: () => Navigator.of(sheetContext).pop(draft),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-
-        // ── Bottom gradient overlay ─────────────────────────────────────
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Color(0xF2000000)],
-              stops: [0.40, 1.0],
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.page(sheetContext),
+              0,
+              AppSpacing.page(sheetContext),
+              AppSpacing.md,
+            ),
+            child: Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final option in options)
+                  AppChip(
+                    label: option,
+                    selected: draft.contains(option),
+                    onTap: () => setSheetState(() {
+                      if (draft.contains(option)) {
+                        draft.remove(option);
+                      } else {
+                        draft.add(option);
+                      }
+                    }),
+                  ),
+              ],
             ),
           ),
         ),
+      ),
+    );
 
-        // ── NEW DROP shimmer sweep ──────────────────────────────────────
-        // Spec: "Shimmer sweep on card" — single diagonal white sheen on appear
-        if (outfit.isNewDrop)
-          AnimatedBuilder(
-            animation: _shimmer,
-            builder: (_, __) {
-              if (!_shimmerCtrl.isAnimating && _shimmerCtrl.value == 0) {
-                return const SizedBox.shrink();
-              }
-              return Positioned.fill(
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment(_shimmer.value - 0.6, -0.5),
-                        end:   Alignment(_shimmer.value + 0.6,  0.5),
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withValues(alpha: 0.13),
-                          Colors.white.withValues(alpha: 0.06),
-                          Colors.transparent,
-                        ],
-                        stops: const [0.0, 0.45, 0.55, 1.0],
-                      ),
-                    ),
+    if (result == null || !mounted) return;
+    setState(() {
+      selection
+        ..clear()
+        ..addAll(result);
+      _applyFilters();
+    });
+    _appearCtrl.forward(from: 0);
+  }
+
+  Future<void> _openPriceSheet() async {
+    // Distinguishes "dismissed" from "chose Any price": the sheet pops a
+    // one-element list for a real choice and null when it is waved away.
+    final choice = await showAppSheet<List<_PriceBand?>>(
+      context,
+      child: AppSheet(
+        title: 'Price',
+        subtitle: 'Only show pieces in this range',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final band in _priceBands)
+              ListTile(
+                onTap: () => Navigator.of(context).pop([band]),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.page(context),
+                ),
+                title: Text(
+                  band.label,
+                  style: AppType.bodyLarge.copyWith(
+                    color: AppPalette.textPrimary,
+                    fontWeight: band == _band
+                        ? FontWeight.w600
+                        : FontWeight.w400,
                   ),
                 ),
-              );
-            },
+                trailing: band == _band
+                    ? const Icon(Icons.check, size: 19, color: AppPalette.accent)
+                    : null,
+              ),
+            if (_band != null)
+              ListTile(
+                onTap: () => Navigator.of(context).pop(const [null]),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.page(context),
+                ),
+                title: Text(
+                  'Any price',
+                  style: AppType.bodyLarge.copyWith(color: AppPalette.accent),
+                ),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+    setState(() {
+      _band = choice.first;
+      _applyFilters();
+    });
+    _appearCtrl.forward(from: 0);
+  }
+
+  Future<void> _openMoreSheet() async {
+    final action = await showAppSheet<_MoreAction>(
+      context,
+      child: AppSheet(
+        title: 'More',
+        subtitle: 'Everything else that shapes the deck',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              onTap: () => Navigator.of(context).pop(_MoreAction.toggleStock),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.page(context),
+              ),
+              title: Text(
+                'Only show in stock',
+                style: AppType.bodyLarge.copyWith(
+                  color: AppPalette.textPrimary,
+                ),
+              ),
+              trailing: Icon(
+                _inStockOnly
+                    ? Icons.check_circle
+                    : Icons.radio_button_unchecked,
+                size: 19,
+                color: _inStockOnly
+                    ? AppPalette.accent
+                    : AppPalette.textTertiary,
+              ),
+            ),
+            ListTile(
+              onTap: () => Navigator.of(context).pop(_MoreAction.clearAll),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.page(context),
+              ),
+              title: Text(
+                'Clear all filters',
+                style: AppType.bodyLarge.copyWith(color: AppPalette.accent),
+              ),
+              trailing: const Icon(
+                Icons.refresh,
+                size: 19,
+                color: AppPalette.accent,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+
+    if (action == null || !mounted) return;
+    switch (action) {
+      case _MoreAction.toggleStock:
+        setState(() {
+          _inStockOnly = !_inStockOnly;
+          _applyFilters();
+        });
+        _appearCtrl.forward(from: 0);
+      case _MoreAction.clearAll:
+        _clearFilters();
+    }
+  }
+
+  // ── Navigation ──────────────────────────────────────────────────────────
+
+  void _openCart() => Navigator.push(context, CartScreen.route());
+
+  void _openProduct(ParentProduct product) => Navigator.push(
+    context,
+    ProductDetailScreen.route(product, heroTag: 'swipe-${product.id}'),
+  );
+
+  /// Mirrors the home screen's handler so the bar behaves identically
+  /// wherever it appears. Tapping Home pops back rather than stacking a
+  /// second copy of it.
+  void _handleNavTap(int index) {
+    switch (index) {
+      case 0:
+        Navigator.of(context).maybePop();
+      case 2:
+        Navigator.push(context, InstantOutfitBuilderScreen.route());
+      case 3:
+        Navigator.push(context, ThriftHomeScreen.route());
+      case 4:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                TrialAtDoorstepScreen(orderId: 'ORDER123', riderId: 'RIDER456'),
           ),
+        );
+      default:
+        break;
+    }
+  }
 
-        // ── Text overlay (bottom-left) ──────────────────────────────────
-        Positioned(
-          left: 16, right: 16, bottom: 20,
+  // ── Build ───────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: AppTheme.lightOverlay,
+      child: Scaffold(
+        backgroundColor: AppPalette.canvas,
+        body: SafeArea(
+          bottom: false,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              // Brand
-              Text(outfit.brand, style: _T.brandName(26, color: _C.ivory)),
-              const SizedBox(height: 2),
-              Text(outfit.style,
-                  style: _T.body(13, color: _C.ivory.withValues(alpha: 0.80)),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 8),
-
-              // Price
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(outfit.price,
-                      style: AppType.label.copyWith(
-                          fontSize: 22, fontWeight: FontWeight.w900,
-                          color: _C.ivory)),
-                  if (outfit.originalPrice != null) ...[
-                    const SizedBox(width: 10),
-                    Text(outfit.originalPrice!,
-                        style: GoogleFonts.robotoMono(
-                            fontSize: 13,
-                            color: _C.grey500,
-                            decoration: TextDecoration.lineThrough,
-                            decorationColor: _C.grey500)),
-                  ],
-                ],
+              _buildHeader(),
+              _buildFilterRow(),
+              const SizedBox(height: AppSpacing.sm),
+              _buildRemainingPill(),
+              Expanded(child: _buildDeck()),
+              _buildConsole(),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSwipeHint(),
+              _buildCartNudge(),
+            ],
+          ),
+        ),
+        bottomNavigationBar: RepaintBoundary(
+          child: AppBottomNav(
+            currentIndex: 1,
+            onTap: _handleNavTap,
+            items: const [
+              AppNavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Home',
               ),
-              const SizedBox(height: 10),
-
-              // Occasion tags
-              Wrap(
-                spacing: 6, runSpacing: 4,
-                children: outfit.occasions.map((tag) => Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _C.white.withValues(alpha: 0.12),
-                    border: Border.all(
-                        color: _C.white.withValues(alpha: 0.22), width: 1),
-                  ),
-                  child: Text(tag,
-                      style: AppType.label.copyWith(
-                          fontSize: 9, fontWeight: FontWeight.w900,
-                          color: _C.ivory, letterSpacing: 1.2)),
-                )).toList(),
+              AppNavItem(
+                icon: Icons.style_outlined,
+                activeIcon: Icons.style,
+                label: 'Swipe',
               ),
-              const SizedBox(height: 10),
-
-              // ── FOMO SIGNAL ROW ────────────────────────────────────────
-              // Ch. 15: max 2 active signals per card, editorial not panic
-              _FomoSignalRow(outfit: outfit),
-              const SizedBox(height: 12),
-
-              // Xpense Meter
-              Align(
-                alignment: Alignment.centerRight,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 30),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    
-                  ),
-                ),
+              AppNavItem(
+                icon: Icons.grid_view_outlined,
+                activeIcon: Icons.grid_view,
+                label: 'Build',
+              ),
+              AppNavItem(
+                icon: Icons.storefront_outlined,
+                activeIcon: Icons.storefront,
+                label: 'Thrift',
+              ),
+              AppNavItem(
+                icon: Icons.local_shipping_outlined,
+                activeIcon: Icons.local_shipping,
+                label: 'Trial',
+                badgeCount: 2,
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-// ─── FOMO SIGNAL ROW ──────────────────────────────────────────────────────────
-// Ch. 15: "FOMO signals must never feel desperate. They are editorial callouts
-// — factual urgency, not panic design."
-// Priority: stock > social > recency > newDrop > trending  |  max 2 per card
-class _FomoSignalRow extends StatefulWidget {
-  final _Outfit outfit;
-  const _FomoSignalRow({required this.outfit, super.key});
-  @override
-  State<_FomoSignalRow> createState() => _FomoSignalRowState();
-}
-
-class _FomoSignalRowState extends State<_FomoSignalRow>
-    with SingleTickerProviderStateMixin {
-
-  late final AnimationController _pulseCtrl;
-  late final Animation<double> _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    // 2s pulse for Stock Counter (spec: "2s pulse animation")
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.45, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+      ),
     );
   }
 
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
+  // ── 1. Header ───────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    final inset = AppSpacing.page(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        inset - AppSpacing.xs,
+        AppSpacing.xxs,
+        inset - AppSpacing.xs,
+        AppSpacing.xs,
+      ),
+      child: Row(
+        children: [
+          if (Navigator.of(context).canPop())
+            AppIconButton(
+              icon: Icons.arrow_back,
+              tooltip: 'Back',
+              onPressed: () => Navigator.of(context).maybePop(),
+            )
+          else
+            const SizedBox(width: AppSpacing.xs),
+          const SizedBox(width: AppSpacing.xxs),
+          Flexible(
+            child: RichText(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                style: AppType.wordmark,
+                children: const [
+                  TextSpan(text: 'Swipe'),
+                  TextSpan(
+                    text: 'Style',
+                    style: TextStyle(color: AppPalette.accent),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
+          AppCountBadge(
+            count: _bag.length,
+            child: AppIconButton(
+              icon: Icons.shopping_bag_outlined,
+              tooltip: 'Bag',
+              onPressed: _openCart,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final o = widget.outfit;
-    final signals = <Widget>[];
+  // ── 2. Filter row ───────────────────────────────────────────────────────
+  Widget _buildFilterRow() {
+    final brandLabel = switch (_brands.length) {
+      0 => 'Brand',
+      1 => _brands.first,
+      _ => '${_brands.length} Brands',
+    };
 
-    // 1 — Stock Counter (Roboto Mono · fomoRed · 2s pulse)
-    if (o.stockLeft != null && o.stockLeft! < 5 && signals.length < 2) {
-      signals.add(_stockSignal(o.stockLeft!));
-    }
-    // 2 — Social Proof (Montserrat Black · muted · static)
-    if (o.viewersNow != null && signals.length < 2) {
-      signals.add(_socialProof(o.viewersNow!));
-    }
-    // 3 — Recency Signal (Jost · brandTan · no animation)
-    if (o.ordersToday != null && signals.length < 2) {
-      signals.add(_recencySignal(o.ordersToday!));
-    }
-    // 4 — New Drop Alert (Roboto Mono · shimmer on card · NEW badge glow)
-    if (o.isNewDrop && o.droppedMinsAgo != null && signals.length < 2) {
-      signals.add(_newDropSignal(o.droppedMinsAgo!));
-    }
-    // 5 — Trending Badge (crown icon · brandTan · static pill)
-    if (o.trendingFor != null && signals.length < 2) {
-      signals.add(_trendingSignal(o.trendingFor!));
-    }
+    final pills = <Widget>[
+      _FilterPill(
+        label: 'Filters',
+        icon: Icons.tune,
+        active: _categories.isNotEmpty,
+        onTap: _openCategorySheet,
+      ),
+      _FilterPill(
+        label: _sort.shortLabel,
+        icon: Icons.swap_vert,
+        active: _sort != _SortOption.newest,
+        onTap: _openSortSheet,
+      ),
+      _FilterPill(
+        label: brandLabel,
+        active: _brands.isNotEmpty,
+        onTap: _openBrandSheet,
+      ),
+      _FilterPill(
+        label: _band?.label ?? 'Price',
+        active: _band != null,
+        onTap: _openPriceSheet,
+      ),
+      _FilterPill(label: 'More', active: _inStockOnly, onTap: _openMoreSheet),
+    ];
 
-    if (signals.isEmpty) return const SizedBox.shrink();
-
-    return Wrap(spacing: 6, runSpacing: 5, children: signals);
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.page(context)),
+        itemCount: pills.length,
+        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.xs),
+        itemBuilder: (_, i) => pills[i],
+      ),
+    );
   }
 
-  // ── 1. Stock Counter ──────────────────────────────────────────────────────
-  Widget _stockSignal(int stock) => AnimatedBuilder(
-    animation: _pulse,
-    builder: (_, __) => Opacity(
-      opacity: _pulse.value,
+  // ── 3. Status pill ──────────────────────────────────────────────────────
+  Widget _buildRemainingPill() {
+    final remaining = (_deck.length - _topIndex).clamp(0, _deck.length);
+    return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        color: _C.fomoRed,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xxs + 2,
+        ),
+        decoration: BoxDecoration(
+          color: AppPalette.surface,
+          borderRadius: AppRadii.chip,
+          border: Border.all(color: AppPalette.line),
+          boxShadow: AppShadows.card,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.inventory_2_outlined,
-                size: 10, color: Colors.white),
-            const SizedBox(width: 5),
+            const Icon(
+              Icons.local_fire_department_rounded,
+              size: 14,
+              color: AppPalette.accent,
+            ),
+            const SizedBox(width: AppSpacing.xxs + 2),
             Text(
-              'Only $stock left in your size',
-              style: GoogleFonts.robotoMono(
-                fontSize: 9, fontWeight: FontWeight.w700,
-                color: Colors.white, letterSpacing: 0.3,
+              '$remaining remaining',
+              style: AppType.label.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 
-  // ── 2. Social Proof ───────────────────────────────────────────────────────
-  Widget _socialProof(int viewers) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    color: Colors.white.withValues(alpha: 0.09),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.remove_red_eye_outlined, size: 10, color: _C.grey300),
-        const SizedBox(width: 5),
-        Text(
-          '$viewers people viewing this now',
-          style: AppType.label.copyWith(
-            fontSize: 9, fontWeight: FontWeight.w900,
-            color: _C.grey300, letterSpacing: 0.2,
-          ),
+  // ── 4. Card stack ───────────────────────────────────────────────────────
+  Widget _buildDeck() {
+    if (_deck.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.page(context)),
+        child: AppStateView.empty(
+          icon: Icons.search_off_outlined,
+          title: 'Nothing matches',
+          message:
+              'No pieces fit those filters right now. Loosen them and the '
+              'deck fills back up.',
+          actionLabel: 'Clear Filters',
+          onAction: _clearFilters,
         ),
-      ],
-    ),
-  );
+      );
+    }
 
-  // ── 3. Recency Signal ─────────────────────────────────────────────────────
-  Widget _recencySignal(int orders) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    color: _C.brandTan.withValues(alpha: 0.18),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.local_fire_department_outlined,
-            size: 10, color: _C.brandTan),
-        const SizedBox(width: 5),
-        Text(
-          'Ordered $orders times today',
-          style: AppType.label.copyWith(
-            fontSize: 9, fontWeight: FontWeight.w600,
-            color: _C.brandTan, letterSpacing: 0.3,
-          ),
+    if (_current == null) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.page(context)),
+        child: AppStateView.empty(
+          icon: Icons.check_circle_outline,
+          title: 'That\'s the whole edit',
+          message: _bag.isEmpty
+              ? 'You\'ve seen every piece in this selection.'
+              : 'You\'ve seen everything, and kept ${_bag.length} '
+                    '${_bag.length == 1 ? 'piece' : 'pieces'}.',
+          actionLabel: 'Start Over',
+          onAction: () {
+            setState(() {
+              _topIndex = 0;
+              _history.clear();
+              _resetDrag();
+            });
+            _appearCtrl.forward(from: 0);
+          },
         ),
-      ],
-    ),
-  );
+      );
+    }
 
-  // ── 4. New Drop Alert ─────────────────────────────────────────────────────
-  Widget _newDropSignal(int minsAgo) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.07),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.28), width: 1),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.white.withValues(alpha: 0.10),
-          blurRadius: 10, spreadRadius: 0,
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // NEW badge with glow (spec)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-          color: Colors.white,
-          child: Text(
-            'NEW',
-            style: AppType.label.copyWith(
-              fontSize: 7.5, fontWeight: FontWeight.w900,
-              color: _C.dark, letterSpacing: 1.0,
+    final cards = <Widget>[];
+    // Back to front, so the top card is painted last.
+    for (var depth = 2; depth >= 1; depth--) {
+      final index = _topIndex + depth;
+      if (index >= _deck.length) continue;
+      cards.add(_buildStackedCard(_deck[index], depth));
+    }
+    cards.add(_buildTopCard(_deck[_topIndex]));
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.page(context),
+        AppSpacing.md,
+        AppSpacing.page(context),
+        AppSpacing.md,
+      ),
+      child: Stack(children: cards),
+    );
+  }
+
+  /// A peeking card behind the top one. Inert — it never handles a gesture.
+  Widget _buildStackedCard(ParentProduct product, int depth) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Transform.translate(
+          offset: Offset(0, -10.0 * depth),
+          child: Transform.scale(
+            scale: 1 - 0.045 * depth,
+            child: Opacity(
+              opacity: depth == 1 ? 0.9 : 0.65,
+              child: _SwipeCard(product: product, isWishlisted: false),
             ),
           ),
         ),
-        const SizedBox(width: 7),
-        Text(
-          'Dropped $minsAgo min ago',
-          style: GoogleFonts.robotoMono(
-            fontSize: 9, color: _C.ivory, letterSpacing: 0.2,
-          ),
-        ),
-      ],
-    ),
-  );
-
-  // ── 5. Trending Badge ─────────────────────────────────────────────────────
-  Widget _trendingSignal(String label) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: _C.brandTan.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: _C.brandTan.withValues(alpha: 0.40), width: 1),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.workspace_premium_rounded,
-            size: 11, color: _C.brandTan),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: AppType.label.copyWith(
-            fontSize: 9, fontWeight: FontWeight.w900,
-            color: _C.brandTan, letterSpacing: 0.4,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-// ─── HINT STAMP ───────────────────────────────────────────────────────────────
-class _HintStamp extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _HintStamp({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-    decoration: BoxDecoration(border: Border.all(color: color, width: 3)),
-    child: Text(label, style: _T.display(30, color: color, spacing: 1)),
-  );
-}
-
-// ─── ACTION BUTTON ────────────────────────────────────────────────────────────
-class _ActionBtn extends StatefulWidget {
-  final IconData icon;
-  final Color color;
-  final double iconSize, containerSize;
-  final String label;
-  final bool primary;
-  final VoidCallback onTap;
-
-  const _ActionBtn({
-    required this.icon,
-    required this.color,
-    required this.iconSize,
-    required this.containerSize,
-    required this.label,
-    required this.onTap,
-    this.primary = false,
-  });
-
-  @override
-  State<_ActionBtn> createState() => _ActionBtnState();
-}
-
-class _ActionBtnState extends State<_ActionBtn>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 130));
-    _scale = Tween<double>(begin: 1.0, end: 0.82)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+      ),
+    );
   }
 
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp:   (_) { _ctrl.reverse(); widget.onTap(); },
-      onTapCancel: () => _ctrl.reverse(),
+  Widget _buildTopCard(ParentProduct product) {
+    return Positioned.fill(
       child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (_, __) => Transform.scale(
-          scale: _scale.value,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: widget.containerSize,
-                height: widget.containerSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.primary
-                      ? _C.magenta
-                      : _C.white.withValues(alpha: 0.07),
-                  border: widget.primary
-                      ? null
-                      : Border.all(
-                          color: _C.white.withValues(alpha: 0.14), width: 1.5),
-                  boxShadow: widget.primary
-                      ? [BoxShadow(
-                          color: _C.magenta.withValues(alpha: 0.50),
-                          blurRadius: 22, spreadRadius: 2)]
-                      : null,
-                ),
-                child: Icon(widget.icon,
-                    color: widget.primary ? _C.white : widget.color,
-                    size: widget.iconSize),
+        animation: Listenable.merge([_swipeCtrl, _appearCtrl]),
+        builder: (context, child) {
+          final offset = _swipeCtrl.isAnimating
+              ? _swipeAnim.value
+              : (_isDragging ? _drag : Offset.zero);
+          final rotation = _swipeCtrl.isAnimating
+              ? switch (_swipeDir) {
+                  _SwipeDir.like => 0.12,
+                  _SwipeDir.pass => -0.12,
+                  _ => 0.0,
+                }
+              : _rotation;
+
+          return Transform.translate(
+            offset: offset,
+            child: Transform.rotate(
+              angle: rotation,
+              alignment: Alignment.bottomCenter,
+              child: Opacity(
+                opacity: _appearCtrl.value.clamp(0.0, 1.0),
+                child: child,
               ),
-              const SizedBox(height: 5),
-              Text(widget.label,
-                  style: _T.label(8,
-                      color: widget.primary ? _C.magenta : _C.grey500,
-                      spacing: 0.8)),
+            ),
+          );
+        },
+        child: GestureDetector(
+          onPanStart: _onPanStart,
+          onPanUpdate: _onPanUpdate,
+          onPanEnd: _onPanEnd,
+          onTap: () => _openProduct(product),
+          onDoubleTap: () {
+            WishlistService.instance.toggle(product);
+            HapticFeedback.selectionClick();
+          },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ListenableBuilder(
+                  listenable: WishlistService.instance,
+                  builder: (context, _) => _SwipeCard(
+                    product: product,
+                    isWishlisted: WishlistService.instance.containsId(
+                      product.id,
+                    ),
+                    onWishlist: () {
+                      WishlistService.instance.toggle(product);
+                      HapticFeedback.selectionClick();
+                    },
+                  ),
+                ),
+              ),
+              // Directional stamps, revealed as the card is dragged.
+              Positioned(
+                top: AppSpacing.lg,
+                left: AppSpacing.lg,
+                child: _SwipeStamp(
+                  label: 'Keep',
+                  color: AppPalette.success,
+                  opacity: _likeHint,
+                ),
+              ),
+              Positioned(
+                top: AppSpacing.lg,
+                right: AppSpacing.lg,
+                child: _SwipeStamp(
+                  label: 'Pass',
+                  color: AppPalette.textSecondary,
+                  opacity: _passHint,
+                ),
+              ),
+              Positioned(
+                top: AppSpacing.lg,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _SwipeStamp(
+                    label: 'Vibe Check',
+                    color: AppPalette.warning,
+                    opacity: _vibeHint,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ── 5. Console ──────────────────────────────────────────────────────────
+  Widget _buildConsole() {
+    final live = _current != null;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: AppPalette.surface,
+          borderRadius: AppRadii.chip,
+          border: Border.all(color: AppPalette.line),
+          boxShadow: AppShadows.raised,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ConsoleButton(
+              icon: Icons.close_rounded,
+              tooltip: 'Pass',
+              diameter: 54,
+              onTap: live ? () => _triggerSwipe(_SwipeDir.pass) : null,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _ConsoleButton(
+              icon: Icons.replay_rounded,
+              tooltip: 'Undo',
+              diameter: 46,
+              onTap: _canUndo ? _undo : null,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _ConsoleButton(
+              icon: Icons.check_rounded,
+              tooltip: 'Add to bag',
+              diameter: 54,
+              emphasised: true,
+              onTap: live ? () => _triggerSwipe(_SwipeDir.like) : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── 6. Hint + cart nudge ────────────────────────────────────────────────
+  Widget _buildSwipeHint() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.swipe_outlined,
+          size: 13,
+          color: AppPalette.textTertiary,
+        ),
+        const SizedBox(width: AppSpacing.xxs + 2),
+        Flexible(
+          child: Text(
+            'Swipe to discover more styles',
+            style: AppType.bodySmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCartNudge() {
+    if (_bag.isEmpty) return const SizedBox(height: AppSpacing.md);
+
+    final thumbs = _bag.reversed.take(3).toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      child: Center(
+        child: GestureDetector(
+          onTap: _openCart,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xs,
+              AppSpacing.xs,
+              AppSpacing.sm,
+              AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: AppPalette.surface,
+              borderRadius: AppRadii.chip,
+              border: Border.all(color: AppPalette.line),
+              boxShadow: AppShadows.raised,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ThumbStack(products: thumbs),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('View Cart', style: AppType.titleSmall),
+                    Text(
+                      '${_bag.length} ${_bag.length == 1 ? 'item' : 'items'}',
+                      style: AppType.bodySmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppPalette.textTertiary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One pill in the filter row. Fills with the soft accent when its filter is
+/// carrying a value, so an active filter is visible without opening it.
+class _FilterPill extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _FilterPill({
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.active = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = active ? AppPalette.accentDeep : AppPalette.textPrimary;
+
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: active ? AppPalette.accentSoft : AppPalette.surface,
+            borderRadius: AppRadii.chip,
+            border: Border.all(
+              color: active ? AppPalette.accent : AppPalette.line,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: foreground),
+                const SizedBox(width: AppSpacing.xxs + 2),
+              ],
+              Text(
+                label,
+                style: AppType.label.copyWith(
+                  fontSize: 12,
+                  color: foreground,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(Icons.expand_more, size: 15, color: foreground),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The swipe card: photograph above, the commercial facts below.
+class _SwipeCard extends StatelessWidget {
+  final ParentProduct product;
+  final bool isWishlisted;
+  final VoidCallback? onWishlist;
+
+  const _SwipeCard({
+    required this.product,
+    required this.isWishlisted,
+    this.onWishlist,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final discount = product.discountPercent;
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppPalette.surface,
+        borderRadius: AppRadii.card,
+        border: Border.all(color: AppPalette.line),
+        boxShadow: AppShadows.raised,
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                AppImage(url: product.defaultImageUrl, cacheWidth: 800),
+                if (product.isNew)
+                  const Positioned(
+                    top: AppSpacing.sm,
+                    left: AppSpacing.sm,
+                    child: AppBadge('New', tone: AppBadgeTone.accent),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        product.brand.toUpperCase(),
+                        style: AppType.eyebrow,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    GestureDetector(
+                      onTap: onWishlist,
+                      behavior: HitTestBehavior.opaque,
+                      child: Icon(
+                        isWishlisted ? Icons.favorite : Icons.favorite_border,
+                        size: 18,
+                        color: isWishlisted
+                            ? AppPalette.accent
+                            : AppPalette.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  product.name,
+                  style: AppType.displaySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(product.price, style: AppType.priceLarge),
+                    if (product.originalPriceFormatted != null) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Flexible(
+                        child: Text(
+                          product.originalPriceFormatted!,
+                          style: AppType.priceStrike,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                    if (discount != null) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '$discount% OFF',
+                        style: AppType.label.copyWith(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppPalette.success,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppPalette.surfaceMuted,
+                    borderRadius: AppRadii.badge,
+                  ),
+                  child: Text(
+                    product.category.toUpperCase(),
+                    style: AppType.badge.copyWith(
+                      color: AppPalette.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The directional stamp revealed while dragging — "Keep" / "Pass" / "Vibe
+/// Check". Outlined rather than filled so it reads as editorial, not arcade.
+class _SwipeStamp extends StatelessWidget {
+  final String label;
+  final Color color;
+  final double opacity;
+
+  const _SwipeStamp({
+    required this.label,
+    required this.color,
+    required this.opacity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (opacity <= 0) return const SizedBox.shrink();
+    return Opacity(
+      opacity: opacity.clamp(0.0, 1.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xxs + 2,
+        ),
+        decoration: BoxDecoration(
+          color: AppPalette.surfaceA92,
+          borderRadius: AppRadii.chip,
+          border: Border.all(color: color, width: 1.5),
+        ),
+        child: Text(
+          label.toUpperCase(),
+          style: AppType.overline.copyWith(color: color),
+        ),
+      ),
+    );
+  }
+}
+
+/// A circular action in the console. Passing a null [onTap] renders the
+/// disabled state, which is how Undo reads before the first swipe.
+class _ConsoleButton extends StatefulWidget {
+  final IconData icon;
+  final String tooltip;
+  final double diameter;
+  final bool emphasised;
+  final VoidCallback? onTap;
+
+  const _ConsoleButton({
+    required this.icon,
+    required this.tooltip,
+    required this.diameter,
+    this.emphasised = false,
+    this.onTap,
+  });
+
+  @override
+  State<_ConsoleButton> createState() => _ConsoleButtonState();
+}
+
+class _ConsoleButtonState extends State<_ConsoleButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    final background = !enabled
+        ? AppPalette.surfaceSunken
+        : widget.emphasised
+        ? AppPalette.accentSoft
+        : AppPalette.surfaceMuted;
+    final foreground = !enabled
+        ? AppPalette.textTertiary
+        : widget.emphasised
+        ? AppPalette.accentDeep
+        : AppPalette.textPrimary;
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.tooltip,
+      child: Tooltip(
+        message: widget.tooltip,
+        child: GestureDetector(
+          onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+          onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
+          onTapUp: enabled
+              ? (_) {
+                  setState(() => _pressed = false);
+                  widget.onTap!();
+                }
+              : null,
+          child: AnimatedScale(
+            scale: _pressed ? 0.9 : 1.0,
+            duration: AppMotion.fast,
+            curve: AppMotion.standard,
+            child: Container(
+              width: widget.diameter,
+              height: widget.diameter,
+              decoration: BoxDecoration(
+                color: background,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                widget.icon,
+                size: widget.diameter * 0.42,
+                color: foreground,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Overlapping thumbnails of the last few kept pieces.
+class _ThumbStack extends StatelessWidget {
+  final List<ParentProduct> products;
+
+  const _ThumbStack({required this.products});
+
+  static const double _size = 32;
+  static const double _overlap = 11;
+
+  @override
+  Widget build(BuildContext context) {
+    if (products.isEmpty) return const SizedBox.shrink();
+    final width = _size + (products.length - 1) * (_size - _overlap);
+
+    return SizedBox(
+      width: width,
+      height: _size,
+      child: Stack(
+        children: [
+          for (var i = products.length - 1; i >= 0; i--)
+            Positioned(
+              left: i * (_size - _overlap),
+              child: Container(
+                width: _size,
+                height: _size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppPalette.surface, width: 2),
+                ),
+                child: ClipOval(
+                  child: AppImage(
+                    url: products[i].defaultImageUrl,
+                    cacheWidth: 80,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
