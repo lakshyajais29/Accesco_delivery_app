@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from routes.payments import router as payments_router
 from routes.trials import router as trial_router
 from services.redis_client import redis_client
 from services.db import engine, Base
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 app.include_router(trial_router, prefix="/api/v1/trials", tags=["Trials"])
+app.include_router(payments_router, prefix="/api/v1/payments", tags=["Payments"])
 
 
 @app.get("/health")

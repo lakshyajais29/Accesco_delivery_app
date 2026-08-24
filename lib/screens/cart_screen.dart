@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/checkout_draft.dart';
 import '../models/product_model.dart';
 import '../services/cart_service.dart';
 import '../widgets/ds/ds.dart';
@@ -89,23 +90,18 @@ class _CartBody extends StatelessWidget {
 
   const _CartBody({required this.items});
 
-  /// Order arithmetic, in paise throughout. Converting to rupees only at the
-  /// point of display keeps rounding out of the totals.
-  ({int subtotal, int delivery, int total}) get _totals {
-    final subtotal = items.fold<int>(0, (sum, i) => sum + i.totalInPaise);
-    // Free delivery over ₹1,499 — the threshold the trial flow already uses.
-    final delivery = subtotal >= 149900 ? 0 : 4900;
-    return (
-      subtotal: subtotal,
-      delivery: delivery,
-      total: subtotal + delivery,
-    );
-  }
+  /// The bag as the checkout pipeline sees it.
+  ///
+  /// The arithmetic used to live here, which meant the delivery-fee rule
+  /// only applied to purchases that started in the cart. It belongs to the
+  /// draft now, so every entry point quotes the same total the gateway is
+  /// asked to charge.
+  CheckoutDraft get _draft => CheckoutDraft.fromCart(items);
 
   @override
   Widget build(BuildContext context) {
     final inset = AppSpacing.page(context);
-    final totals = _totals;
+    final draft = _draft;
 
     return Column(
       children: [
@@ -121,17 +117,17 @@ class _CartBody extends StatelessWidget {
             itemCount: items.length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, i) {
-              if (i == items.length) return _OrderSummary(totals: totals);
+              if (i == items.length) return _OrderSummary(draft: draft);
               return _CartRow(item: items[i]);
             },
           ),
         ),
         _CheckoutBar(
-          totalInPaise: totals.total,
-          itemCount: items.fold<int>(0, (sum, i) => sum + i.quantity),
+          totalInPaise: draft.totalInPaise,
+          itemCount: draft.itemCount,
           onCheckout: () => Navigator.push(
             context,
-            CheckoutScreen.route(items: items, totalInPaise: totals.total),
+            CheckoutScreen.route(draft: draft),
           ),
         ),
       ],
@@ -265,9 +261,9 @@ class _Attribute extends StatelessWidget {
 }
 
 class _OrderSummary extends StatelessWidget {
-  final ({int subtotal, int delivery, int total}) totals;
+  final CheckoutDraft draft;
 
-  const _OrderSummary({required this.totals});
+  const _OrderSummary({required this.draft});
 
   @override
   Widget build(BuildContext context) {
@@ -280,15 +276,15 @@ class _OrderSummary extends StatelessWidget {
           children: [
             _SummaryRow(
               label: 'Item total',
-              value: _formatPaise(totals.subtotal),
+              value: _formatPaise(draft.subtotalInPaise),
             ),
             const SizedBox(height: AppSpacing.xs),
             _SummaryRow(
               label: 'Delivery',
-              value: totals.delivery == 0
+              value: draft.deliveryInPaise == 0
                   ? 'FREE'
-                  : _formatPaise(totals.delivery),
-              highlight: totals.delivery == 0,
+                  : _formatPaise(draft.deliveryInPaise),
+              highlight: draft.deliveryInPaise == 0,
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -296,10 +292,10 @@ class _OrderSummary extends StatelessWidget {
             ),
             _SummaryRow(
               label: 'To pay',
-              value: _formatPaise(totals.total),
+              value: _formatPaise(draft.totalInPaise),
               emphasised: true,
             ),
-            if (totals.delivery > 0) ...[
+            if (draft.deliveryInPaise > 0) ...[
               const SizedBox(height: AppSpacing.xs),
               Row(
                 children: [
@@ -311,8 +307,8 @@ class _OrderSummary extends StatelessWidget {
                   const SizedBox(width: AppSpacing.xxs),
                   Expanded(
                     child: Text(
-                      'Add ${_formatPaise(149900 - totals.subtotal)} more for '
-                      'free delivery',
+                      'Add ${_formatPaise(draft.toFreeDeliveryInPaise)} more '
+                      'for free delivery',
                       style: AppType.bodySmall,
                     ),
                   ),

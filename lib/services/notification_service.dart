@@ -5,6 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
+  NotificationService();
+
+  /// Shared instance, so a screen can fire a local notification without
+  /// building a second plugin wrapper (and a second FCM listener set).
+  static final NotificationService instance = NotificationService();
+
   // Lazy, not a field initializer. These `.instance` calls throw
   // synchronously when Firebase.initializeApp() has not run or has failed,
   // and a throw from a field initializer escapes the *constructor* — before
@@ -36,14 +42,7 @@ class NotificationService {
       _fcm.onTokenRefresh.listen(_saveFcmToken);
 
       // Init local notifications (for foreground display)
-      const androidSettings =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosSettings = DarwinInitializationSettings();
-      await _local.initialize(
-        const InitializationSettings(
-            android: androidSettings, iOS: iosSettings),
-        onDidReceiveNotificationResponse: _onNotifTap,
-      );
+      await _ensureLocalReady();
 
       // Foreground message handling
       FirebaseMessaging.onMessage.listen(_showLocalNotification);
@@ -53,6 +52,71 @@ class NotificationService {
       return true;
     } catch (error, stack) {
       debugPrint('NotificationService.init failed: $error\n$stack');
+      return false;
+    }
+  }
+
+  // ── ORDER CONFIRMATION — local, no server round trip ─────────────────────
+  //
+  // Fired straight after a successful payment. It is a courtesy, not part of
+  // the order: the shopper is already looking at the success screen, so this
+  // must never be able to fail the checkout that called it. Everything here
+  // is swallowed.
+  //
+  // [init] is not called anywhere at startup today, so the plugin is
+  // initialised on first use rather than assumed ready — calling `show` on an
+  // uninitialised plugin throws on Android.
+  Future<void> showOrderConfirmation({
+    required String orderId,
+    required int itemCount,
+    required String amountLabel,
+  }) async {
+    try {
+      if (!await _ensureLocalReady()) return;
+
+      await _local.show(
+        orderId.hashCode,
+        'Order confirmed',
+        '$itemCount ${itemCount == 1 ? 'piece is' : 'pieces are'} on the way. '
+            '$amountLabel paid.',
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'orders',
+            'Orders',
+            channelDescription: 'Order confirmations and delivery updates',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        payload: 'order:$orderId',
+      );
+    } catch (error) {
+      debugPrint('NotificationService.showOrderConfirmation failed: $error');
+    }
+  }
+
+  bool _localReady = false;
+
+  /// Initialises the local-notification plugin once, returning false when it
+  /// cannot be set up (permissions denied, no plugin on this platform).
+  Future<bool> _ensureLocalReady() async {
+    if (_localReady) return true;
+    try {
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings();
+      await _local.initialize(
+        const InitializationSettings(
+          android: androidSettings,
+          iOS: iosSettings,
+        ),
+        onDidReceiveNotificationResponse: _onNotifTap,
+      );
+      _localReady = true;
+      return true;
+    } catch (error) {
+      debugPrint('NotificationService: local notifications unavailable — $error');
       return false;
     }
   }

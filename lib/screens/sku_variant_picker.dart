@@ -13,7 +13,13 @@ import 'sku_catalog.dart';
 //  in-stock SKU.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Public entry point. Unchanged signature — existing callers keep working.
+/// What the resolved SKU is wanted for. Only changes the CTA wording — the
+/// selection rules and the payload it produces are identical, which is what
+/// lets Buy Now and Add to Bag share this sheet instead of forking it.
+enum VariantPickerIntent { addToBag, buyNow }
+
+/// Public entry point. [onAddToCart] is still the only required callback, so
+/// existing callers keep working unchanged.
 class VariantPickerSheet {
   const VariantPickerSheet._();
 
@@ -21,10 +27,15 @@ class VariantPickerSheet {
     BuildContext context, {
     required ParentProduct parent,
     required void Function(CartPayload) onAddToCart,
+    VariantPickerIntent intent = VariantPickerIntent.addToBag,
   }) {
     showAppSheet<void>(
       context,
-      child: _PickerSheet(parent: parent, onAddToCart: onAddToCart),
+      child: _PickerSheet(
+        parent: parent,
+        onAddToCart: onAddToCart,
+        intent: intent,
+      ),
     );
   }
 }
@@ -32,8 +43,13 @@ class VariantPickerSheet {
 class _PickerSheet extends StatefulWidget {
   final ParentProduct parent;
   final void Function(CartPayload) onAddToCart;
+  final VariantPickerIntent intent;
 
-  const _PickerSheet({required this.parent, required this.onAddToCart});
+  const _PickerSheet({
+    required this.parent,
+    required this.onAddToCart,
+    required this.intent,
+  });
 
   @override
   State<_PickerSheet> createState() => _PickerSheetState();
@@ -86,20 +102,29 @@ class _PickerSheetState extends State<_PickerSheet> {
     final variant = _variant;
     if (variant == null || !variant.inStock) return;
     HapticFeedback.mediumImpact();
-    widget.onAddToCart(
-      SkuCatalog.buildCartPayload(
-        parent: widget.parent,
-        variant: variant,
-        quantity: _qty,
-      ),
+
+    final payload = SkuCatalog.buildCartPayload(
+      parent: widget.parent,
+      variant: variant,
+      quantity: _qty,
     );
+
+    // Dismiss before handing off, not after. A Buy Now callback pushes the
+    // checkout route synchronously, and popping afterwards would take that
+    // new route straight back off the stack.
     Navigator.pop(context);
+    widget.onAddToCart(payload);
   }
+
+  String get _ctaVerb => switch (widget.intent) {
+        VariantPickerIntent.addToBag => 'Add to Bag',
+        VariantPickerIntent.buyNow => 'Buy Now',
+      };
 
   /// Prompt shown on the disabled CTA, naming whichever choice is still
   /// outstanding rather than a generic "unavailable".
   String get _ctaLabel {
-    if (_canAdd) return 'Add to Bag · $_priceLabel';
+    if (_canAdd) return '$_ctaVerb · $_priceLabel';
     if (_selectedColorHex == null) return 'Select a Colour';
     if (_selectedSize == null) return 'Select a Size';
     return 'Unavailable';
@@ -116,7 +141,9 @@ class _PickerSheetState extends State<_PickerSheet> {
       subtitle: parent.brand,
       footer: AppButton(
         label: _ctaLabel,
-        icon: Icons.shopping_bag_outlined,
+        icon: widget.intent == VariantPickerIntent.buyNow
+            ? Icons.bolt_outlined
+            : Icons.shopping_bag_outlined,
         onPressed: _canAdd ? _addToCart : null,
       ),
       child: SingleChildScrollView(

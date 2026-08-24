@@ -37,6 +37,14 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            // Razorpay's WebView bridge is reached by reflection and by
+            // @JavascriptInterface, neither of which R8 can see. Without
+            // these rules the checkout sheet opens blank in release builds
+            // and only in release builds.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

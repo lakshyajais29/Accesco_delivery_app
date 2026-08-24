@@ -66,6 +66,27 @@ class CartService {
     await col.doc(variantSku).delete();
   }
 
+  /// Removes several rows in one round trip.
+  ///
+  /// Used by checkout to retire exactly the SKUs that were paid for. A
+  /// batch rather than a loop of deletes so the bag empties in a single
+  /// snapshot — a loop makes the cart UI repaint once per item, which reads
+  /// as a stutter on a full bag.
+  ///
+  /// Deleting a document that is not there is a no-op in Firestore, so a
+  /// Buy Now for something never added to the cart passes through harmlessly.
+  Future<void> removeItems(Iterable<String> variantSkus) async {
+    final skus = variantSkus.toList(growable: false);
+    if (skus.isEmpty) return;
+
+    final col = await _itemsCol;
+    final batch = _db.batch();
+    for (final sku in skus) {
+      batch.delete(col.doc(sku));
+    }
+    await batch.commit();
+  }
+
   Future<List<CartPayload>> fetchItems() async {
     final snap = await (await _itemsCol).get();
     return snap.docs.map((d) => _fromMap(d.data() as Map<String, dynamic>)).toList();

@@ -6,6 +6,7 @@ import '../services/cart_service.dart';
 import '../services/catalog_service.dart';
 import '../services/wishlist_service.dart';
 import '../widgets/ds/ds.dart';
+import 'checkout_screen.dart';
 import 'sku_variant_picker.dart';
 import 'virtual_try_on_screen.dart';
 
@@ -19,11 +20,14 @@ import 'virtual_try_on_screen.dart';
 //    4. Seller       — avatar, name, rating, verified seller, chevron
 //    5. Attributes   — Size · Color · Condition · Brand
 //    6. Assurance    — delivery ETA and try-&-return window
-//    7. Action bar   — wishlist square + brown "Add to Cart"
+//    7. Action bar   — wishlist square + Buy Now + brown "Add to Cart"
 //
-//  Behaviour is unchanged from the previous implementation: variant picker →
-//  CartService.addItem, wishlist toggle, virtual try-on, and similar products
-//  from CatalogService.
+//  Behaviour is otherwise unchanged: variant picker → CartService.addItem,
+//  wishlist toggle, virtual try-on, and similar products from CatalogService.
+//
+//  Buy Now does not have a checkout of its own. It resolves a SKU through the
+//  same variant picker and hands the payload to the same CheckoutScreen the
+//  cart uses, so there is exactly one place where money changes hands.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Figma measurements for this screen, kept together so the layout can be
@@ -139,6 +143,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       context,
       parent: widget.product,
       onAddToCart: _addToCart,
+    );
+  }
+
+  /// Buy Now — the same picker, a different destination.
+  ///
+  /// The item is deliberately *not* added to the cart on the way past: a
+  /// direct purchase that fails or is abandoned should leave the bag exactly
+  /// as the shopper left it.
+  void _openBuyNow() {
+    VariantPickerSheet.show(
+      context,
+      parent: widget.product,
+      intent: VariantPickerIntent.buyNow,
+      onAddToCart: (payload) {
+        if (!mounted) return;
+        Navigator.push(context, CheckoutScreen.buyNow(payload));
+      },
     );
   }
 
@@ -796,6 +817,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 Icons.camera_alt_outlined,
                 size: 20,
                 color: AppPalette.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // Buy Now — outlined, so the filled brown CTA stays the primary
+          // affordance and this reads as the express lane rather than a
+          // competing button.
+          Expanded(
+            child: GestureDetector(
+              onTap: canBuy && !_isAddingToCart ? _openBuyNow : null,
+              child: Container(
+                height: _Spec.ctaHeight,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(_Spec.ctaRadius),
+                  border: Border.all(
+                    color: canBuy ? _Ink.brand : _Ink.cardBorder,
+                  ),
+                ),
+                child: Text(
+                  'Buy Now',
+                  style: AppType.bodyLarge.copyWith(
+                    fontSize: 15,
+                    letterSpacing: 0.8,
+                    color: canBuy ? _Ink.brand : AppPalette.textTertiary,
+                  ),
+                ),
               ),
             ),
           ),

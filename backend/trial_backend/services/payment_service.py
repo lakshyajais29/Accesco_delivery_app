@@ -9,8 +9,12 @@ Flow:
 
 To swap for Stripe: replace the razorpay calls with stripe.PaymentIntent.capture()
 """
+import hashlib
+import hmac
 import logging
 import os
+import time
+import uuid
 from typing import Optional
 
 import razorpay
@@ -118,3 +122,95 @@ async def get_user_from_order(order_id: str, db) -> Optional[str]:
     """
     # TODO: replace with real DB query
     return f"usr_{order_id}"   # stub: returns deterministic fake user_id
+
+
+# ─── Checkout: order creation + signature verification ────────────────────────
+#
+# Used by routes/payments.py, which the Flutter CheckoutScreen calls before it
+# opens the Razorpay sheet and again after the sheet reports success. Kept in
+# this module so every razorpay call in the service lives in one file.
+
+
+def _dev_mode() -> bool:
+    """True when no real credentials are configured."""
+    return not (RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
+
+
+def create_checkout_order(
+    amount_in_paise: int,
+    currency: str = "INR",
+    receipt: str = "",
+    notes: Optional[dict] = None,
+) -> dict:
+    """
+    Create the Razorpay order the checkout sheet is opened against.
+
+    The amount is fixed here, under the key secret, and echoed back to the app
+    so the client has no say in what it is charged.
+
+    Returns the raw Razorpay order dict: {"id", "amount", "currency", ...}.
+    """
+    if amount_in_paise <= 0:
+        raise ValueError("amount_in_paise must be positive")
+
+    if _dev_mode():
+        # Lets the whole flow be exercised on a laptop with no keys. The id
+        # is shaped like a real one so nothing downstream needs a special
+        # case, and it will never be mistaken for a live order.
+        logger.warning("Razorpay credentials not configured — returning a dev order")
+        return {
+            "id": f"order_DEV{uuid.uuid4().hex[:14]}",
+            "amount": amount_in_paise,
+            "currency": currency,
+            "receipt": receipt,
+            "status": "created",
+            "created_at": int(time.time()),
+        }
+
+    client = _get_client()
+    order = client.order.create(
+        {
+            "amount": amount_in_paise,
+            "currency": currency,
+            "receipt": receipt[:40],
+            "notes": notes or {},
+            # Capture as soon as the payment is authorised. Without this an
+            # authorised payment sits uncaptured and is auto-refunded after
+            # five days — the classic "the customer paid but we never got it".
+            "payment_capture": 1,
+        }
+    )
+    logger.info("Created Razorpay order %s for %s paise", order["id"], amount_in_paise)
+    return order
+
+
+def verify_checkout_signature(
+    order_id: str,
+    payment_id: str,
+    signature: str,
+) -> bool:
+    """
+    Verify Razorpay's checkout signature: HMAC-SHA256 of "order_id|payment_id"
+    keyed with the API secret.
+
+    This is the only proof that a success callback in the app corresponds to a
+    real payment. Compared with hmac.compare_digest so the check does not leak
+    the expected value through its timing.
+    """
+    if _dev_mode():
+        # Mirror the dev order above: accept, but say so loudly. This branch
+        # must never be reachable in production, which is what the missing
+        # credentials would already have broken.
+        logger.warning("Razorpay credentials not configured — signature check skipped")
+        return True
+
+    if not (order_id and payment_id and signature):
+        return False
+
+    expected = hmac.new(
+        key=RAZORPAY_KEY_SECRET.encode("utf-8"),
+        msg=f"{order_id}|{payment_id}".encode("utf-8"),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+
+    return hmac.compare_digest(expected, signature)
